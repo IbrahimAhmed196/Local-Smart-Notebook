@@ -22,7 +22,13 @@ class Settings(BaseSettings):
     # "" = URLs like /auth/login. Set API_PREFIX=/api/v1 in .env to move EVERYTHING
     # (auth, notebooks, documents) under /api/v1 at once.
     api_prefix: str = ""
-    cors_origins: tuple[str, ...] = ("http://localhost:5173", "http://localhost:3000")
+    cors_origins: tuple[str, ...] = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    )
+    max_message_length: int = 10000
 
     # --- security (Task 2) ---
     secret_key: str = "dev-only-change-me"

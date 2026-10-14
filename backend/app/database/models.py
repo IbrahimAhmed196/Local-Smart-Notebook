@@ -54,6 +54,12 @@ class Document(Base):
 
     notebook = relationship("Notebook", back_populates="documents")
 
+class MessageSender:
+    """Allowed message sender values for Task 4 chat history."""
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(Integer, primary_key=True, index=True)

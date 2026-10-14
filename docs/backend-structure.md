@@ -35,3 +35,12 @@ The diagram says *project*, the team says *notebook*. The file names follow the 
 | `services/ingestion_hook.py` | `ingestion/pipeline.py` |
 | `backend/tests/`, `backend/.env.example`, `backend/pytest.ini` | `tests/`, `.env.example`, `pytest.ini` in the repository root |
 | `app/database/main.py` (duplicate app) | removed |
+
+
+## Task 4: Chat management
+- `app/api/chat.py`: conversation and message HTTP endpoints.
+- `app/schemas/chat.py`: validated chat request and response schemas.
+- `app/services/chat_service.py`: conversation/message business logic.
+- `app/database/repositories/chat_repo.py`: database queries for conversations and messages.
+- User prompts are stored persistently; AI responses are intentionally not generated in Task 4.
+- Conversation and message routes use the existing ownership dependency and return 404 for other users' data.
