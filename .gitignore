@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+node_modules/
+data/uploads/*
+data/qdrant/*
+data/artifacts/*
+data/temporary/*
+!data/*/.gitkeep

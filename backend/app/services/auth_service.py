@@ -9,7 +9,7 @@ from app.core.security import (
 )
 from app.database.models import User
 from app.database.repositories import user_repo
-from app.schemas.auth_schema import UserCreate
+from app.schemas.auth import UserCreate
 
 
 def register(db: Session, data: UserCreate) -> User:

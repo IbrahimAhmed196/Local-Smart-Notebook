@@ -2,13 +2,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.database.database import get_db
 from app.database.models import Conversation, Document, Notebook, User
 from app.database.repositories import user_repo
 
-# Must match the real login path (if Task 4 adds a prefix like /api/v1, change it)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# Must match the real login path; it follows API_PREFIX from the settings
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.api_prefix}/auth/login")
 
 
 def get_current_user(

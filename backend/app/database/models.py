@@ -24,6 +24,16 @@ class Notebook(Base):
     documents = relationship("Document", back_populates="notebook", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="notebook", cascade="all, delete-orphan")
 
+class DocumentStatus:
+    """Lifecycle of a document. Task 3 only uses UPLOADED; the AI ingestion
+    pipeline (future task) moves it through the other states."""
+    UPLOADED = "UPLOADED"
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, index=True)
@@ -32,6 +42,15 @@ class Document(Base):
     file_type = Column(String, nullable=False)
     notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    # --- Task 3: document management metadata ---
+    # (filename = display name, file_path = path relative to the uploads dir)
+    file_size = Column(Integer, nullable=False, default=0)        # bytes
+    mime_type = Column(String, nullable=True)
+    sha256 = Column(String, index=True, nullable=True)            # duplicate detection
+    description = Column(Text, nullable=True)
+    status = Column(String, nullable=False, default="UPLOADED")   # ingestion lifecycle
+    error = Column(Text, nullable=True)                           # ingestion error (future)
 
     notebook = relationship("Notebook", back_populates="documents")
 

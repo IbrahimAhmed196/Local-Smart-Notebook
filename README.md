@@ -1,2 +1,36 @@
-# Local-Smart-Notebook
-Privacy-first, offline AI workspace powered by local LLMs, featuring multi-document RAG, intelligent summarization, multi-agent workflows, spreadsheet analytics, infographic generation and automated presentation generation.
+# Local Smart Notebook
+
+Backend (FastAPI + SQLite) for Stage 1: login, notebooks, document upload. The AI features
+(Stage 2) have their folders and placeholder files ready but contain no code yet.
+
+## Setup (once)
+    cd backend
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1          # Windows PowerShell   (macOS/Linux: source .venv/bin/activate)
+    pip install -r requirements.txt     # large: it includes the AI libraries
+    cd ..
+    copy .env.example .env              # macOS/Linux: cp   - then put a real SECRET_KEY in .env
+    cd backend
+    alembic upgrade head                # creates local_smart_notebook.db
+
+## Run the API (from backend/)
+    uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs
+
+## Run the tests (from the repository root)
+    python -m pytest -q                 # 28 tests
+
+Always start `uvicorn` and `alembic` from `backend/` (the database path is relative).
+If you have an old `local_smart_notebook.db` that was created by `create_all`, delete it first.
+
+## Endpoints (no prefix by default; set API_PREFIX=/api/v1 in .env to add one)
+| | |
+|---|---|
+| Auth | `POST /auth/register` · `POST /auth/login` (form data: username = e-mail) · `GET /auth/me` |
+| Notebooks ("projects" in the design) | `POST/GET /notebooks/` · `PUT/DELETE /notebooks/{notebook_id}` |
+| Documents | `POST /documents` · `GET /documents` · `GET /documents/supported-types` · `GET/PATCH/DELETE /documents/{document_id}` · `GET /documents/{document_id}/download` |
+
+Everything except register and login needs `Authorization: Bearer <token>`.
+Users only see and change their own notebooks and documents (other people's objects answer 404).
+
+## Folders
+See `docs/backend-structure.md`.

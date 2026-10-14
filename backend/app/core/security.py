@@ -1,10 +1,15 @@
+"""Security helpers: passwords, JWT tokens, safe file names and paths."""
+import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import jwt
 from pwdlib import PasswordHash
 from pwdlib.exceptions import UnknownHashError
 
 from app.core.config import settings
+from app.core.exceptions import InvalidFileError
 
 _password_hash = PasswordHash.recommended()  # Argon2
 
@@ -41,3 +46,29 @@ def decode_access_token(token: str) -> int | None:
         return int(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError, TypeError):
         return None
+
+
+# ---- Safe file names and paths (used by document uploads) ----
+_UNSAFE = re.compile(r"[^\w\s.\-()\[\]]", re.UNICODE)   # \w keeps Arabic letters
+MAX_NAME_LEN = 150
+
+
+def sanitize_filename(raw: str) -> str:
+    name = unicodedata.normalize("NFKC", raw or "")
+    name = name.replace("\\", "/").split("/")[-1]
+    name = "".join(c for c in name if c.isprintable())
+    name = _UNSAFE.sub("_", name).strip(" .")
+    if not name:
+        raise InvalidFileError("Missing or invalid filename.")
+    stem, dot, ext = name.rpartition(".")
+    if not dot:
+        return name[:MAX_NAME_LEN]
+    return f"{stem[: MAX_NAME_LEN - len(ext) - 1]}.{ext}"
+
+
+def safe_join(base: Path, relative: str) -> Path:
+    base = base.resolve()
+    target = (base / relative).resolve()
+    if base != target and base not in target.parents:
+        raise InvalidFileError("Invalid storage path.")
+    return target
