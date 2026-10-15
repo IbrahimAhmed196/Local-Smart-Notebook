@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, documents, projects
+from app.api import auth, chat, documents, projects
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
@@ -42,7 +42,8 @@ async def app_error_handler(_: Request, exc: AppError):
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(documents.router, prefix=settings.api_prefix)
-# Later tasks: chat.router (Task 4), then query, summaries, analytics, ...
+app.include_router(chat.router, prefix=settings.api_prefix)
+# Later tasks: query, summaries, analytics, ...
 
 
 @app.get("/")
