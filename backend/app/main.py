@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
+from app.infographic.router import router as infographic_router
 from app.api import auth, chat, documents, projects
 from app.core.config import settings
 from app.core.exceptions import AppError
@@ -31,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
-
+app.include_router(infographic_router)
 
 @app.exception_handler(AppError)
 async def app_error_handler(_: Request, exc: AppError):
