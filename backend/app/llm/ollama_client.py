@@ -9,7 +9,13 @@ class OllamaJSONClient:
         self.model_name = model_name
         self.base_url = base_url
 
-    def generate_json(self, prompt: str, response_schema: Type[BaseModel]) -> BaseModel:
+    def generate_json(
+        self,
+        prompt: str,
+        response_schema: Type[BaseModel],
+        temperature: float = 0.3,
+        num_ctx: int | None = None,
+    ) -> BaseModel:
         system_prompt = (
             f"You are an AI assistant that outputs strictly valid JSON matching this Pydantic schema: "
             f"{response_schema.model_json_schema()}"
@@ -23,8 +29,10 @@ class OllamaJSONClient:
             ],
             "format": "json",
             "stream": False,
-            "options": {"temperature": 0.3}
+            "options": {"temperature": temperature}
         }
+        if num_ctx:
+            payload["options"]["num_ctx"] = num_ctx
 
         for _ in range(2):
             try:

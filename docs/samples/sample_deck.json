@@ -1,0 +1,220 @@
+{
+  "presentation_title": "Sales Review 2025",
+  "target_audience": "Management team",
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Sales Review 2025",
+      "layout_type": "title",
+      "subtitle": "How the business performed in 2025",
+      "bullets": [],
+      "right_bullets": [],
+      "speaker_notes": "Welcome everyone. Today we review how sales performed across our regions in 2025.",
+      "chart": null,
+      "table": null,
+      "citations": [],
+      "warnings": []
+    },
+    {
+      "slide_number": 2,
+      "title": "Key Findings",
+      "layout_type": "bullet_points",
+      "subtitle": null,
+      "bullets": [
+        {
+          "text": "Revenue grew 12 percent in 2025",
+          "source_ids": [
+            "doc2-s2-a"
+          ]
+        },
+        {
+          "text": "Laptops drove most of the growth",
+          "source_ids": [
+            "doc2-s2-a"
+          ]
+        },
+        {
+          "text": "The north region is the strongest market",
+          "source_ids": [
+            "doc2-s2-a"
+          ]
+        }
+      ],
+      "right_bullets": [],
+      "speaker_notes": "Revenue grew twelve percent. Laptops were the main driver, and the north region led.",
+      "chart": null,
+      "table": null,
+      "citations": [
+        {
+          "source_id": "doc2-s2-a",
+          "document_id": 2,
+          "filename": "sales_report.pdf",
+          "page": 2
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "slide_number": 3,
+      "title": "Strengths and Risks",
+      "layout_type": "two_columns",
+      "subtitle": null,
+      "bullets": [
+        {
+          "text": "Laptop sales led the growth",
+          "source_ids": [
+            "doc2-s3-a"
+          ]
+        },
+        {
+          "text": "North region is the strongest market",
+          "source_ids": [
+            "doc2-s3-a"
+          ]
+        }
+      ],
+      "right_bullets": [
+        {
+          "text": "West phone sales missed the target",
+          "source_ids": [
+            "doc2-s3-b"
+          ]
+        },
+        {
+          "text": "Supply delays caused the shortfall",
+          "source_ids": [
+            "doc2-s3-b"
+          ]
+        }
+      ],
+      "speaker_notes": "On the left, what worked. On the right, where we fell short and why.",
+      "chart": null,
+      "table": null,
+      "citations": [
+        {
+          "source_id": "doc2-s3-a",
+          "document_id": 2,
+          "filename": "sales_report.pdf",
+          "page": 3
+        },
+        {
+          "source_id": "doc2-s3-b",
+          "document_id": 2,
+          "filename": "sales_report.pdf",
+          "page": 4
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "slide_number": 4,
+      "title": "Revenue by Region",
+      "layout_type": "chart",
+      "subtitle": null,
+      "bullets": [
+        {
+          "text": "North earns the most revenue",
+          "source_ids": [
+            "doc2-s4-a"
+          ]
+        }
+      ],
+      "right_bullets": [],
+      "speaker_notes": "This chart compares total revenue by region, computed from the sales file.",
+      "chart": {
+        "chart_type": "bar",
+        "title": "Revenue by region",
+        "categories": [
+          "North",
+          "South",
+          "East",
+          "West"
+        ],
+        "series": [
+          {
+            "name": "Revenue",
+            "values": [
+              200000.0,
+              155000.0,
+              122000.0,
+              155000.0
+            ]
+          }
+        ],
+        "source": "sample_sales.csv"
+      },
+      "table": null,
+      "citations": [
+        {
+          "source_id": "doc2-s4-a",
+          "document_id": 2,
+          "filename": "sales_report.pdf",
+          "page": 4
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "slide_number": 5,
+      "title": "Sample of the Data",
+      "layout_type": "table",
+      "subtitle": null,
+      "bullets": [
+        {
+          "text": "Laptops outsell phones in most regions",
+          "source_ids": [
+            "doc2-s5-a"
+          ]
+        }
+      ],
+      "right_bullets": [],
+      "speaker_notes": "Here are the first rows of the sales data behind the previous chart.",
+      "chart": null,
+      "table": {
+        "title": "Sales rows",
+        "columns": [
+          "Region",
+          "Product",
+          "Revenue"
+        ],
+        "rows": [
+          [
+            "North",
+            "Laptops",
+            120000
+          ],
+          [
+            "North",
+            "Phones",
+            80000
+          ],
+          [
+            "South",
+            "Laptops",
+            95000
+          ],
+          [
+            "South",
+            "Phones",
+            60000
+          ],
+          [
+            "East",
+            "Laptops",
+            70000
+          ]
+        ],
+        "source": "sample_sales.csv"
+      },
+      "citations": [
+        {
+          "source_id": "doc2-s5-a",
+          "document_id": 2,
+          "filename": "sales_report.pdf",
+          "page": 5
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

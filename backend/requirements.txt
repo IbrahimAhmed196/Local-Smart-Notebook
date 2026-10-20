@@ -128,3 +128,5 @@ PyJWT>=2.8
 pwdlib[argon2]>=0.2
 email-validator>=2.1
 pytest>=8.0
+pandas>=2.2
+openpyxl>=3.1

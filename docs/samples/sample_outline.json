@@ -1,0 +1,36 @@
+{
+  "presentation_title": "Sales Review 2025",
+  "target_audience": "Management team",
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Sales Review 2025",
+      "purpose": "Introduce the review",
+      "layout_type": "title"
+    },
+    {
+      "slide_number": 2,
+      "title": "Key Findings",
+      "purpose": "Summarise the main results",
+      "layout_type": "bullet_points"
+    },
+    {
+      "slide_number": 3,
+      "title": "Strengths and Risks",
+      "purpose": "Contrast what works with what does not",
+      "layout_type": "two_columns"
+    },
+    {
+      "slide_number": 4,
+      "title": "Revenue by Region",
+      "purpose": "Show which regions earn the most",
+      "layout_type": "chart"
+    },
+    {
+      "slide_number": 5,
+      "title": "Sample of the Data",
+      "purpose": "Show the underlying rows",
+      "layout_type": "table"
+    }
+  ]
+}

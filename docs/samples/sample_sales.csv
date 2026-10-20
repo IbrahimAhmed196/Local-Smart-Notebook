@@ -1,0 +1,9 @@
+Region,Product,Revenue,Units
+North,Laptops,120000,300
+North,Phones,80000,400
+South,Laptops,95000,240
+South,Phones,60000,310
+East,Laptops,70000,180
+East,Phones,52000,260
+West,Laptops,110000,280
+West,Phones,45000,190
