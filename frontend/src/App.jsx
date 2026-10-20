@@ -3,9 +3,7 @@ import * as api from './services/api.js'
 import AuthForm from './components/AuthForm.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import ChatWindow from './components/ChatWindow.jsx'
-import DocumentUpload from './components/DocumentUpload.jsx'
 import DocumentList from './components/DocumentList.jsx'
-import ApiLog from './components/ApiLog.jsx'
 import { btnGhost } from './ui.js'
 
 const DEFAULT_FILTERS = { search: '', sort_by: 'uploaded_at', order: 'desc' }
@@ -39,8 +37,7 @@ export default function App() {
 
   const [notice, setNotice] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sourcesOpen, setSourcesOpen] = useState(false)
-  const [logOpen, setLogOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const notify = useCallback((type, text) => {
     setNotice({ type, text })
@@ -132,7 +129,6 @@ export default function App() {
   const openConversation = async (id) => {
     const seq = ++openSeq.current
     setSidebarOpen(false)
-    setSourcesOpen(false)
     setMsgLoading(true)
     setChatError('')
     try {
@@ -168,7 +164,6 @@ export default function App() {
     setMessages([])
     setChatError('')
     setSidebarOpen(false)
-    setSourcesOpen(false)
   }
 
   // Resolves to true if the backend stored the message (the input clears only then).
@@ -309,6 +304,24 @@ export default function App() {
     }
   }
 
+  // Called by the + button as soon as the user picks file(s) in the system file window.
+  const uploadFiles = async (files) => {
+    if (!active || uploading || !files.length) return
+    setUploading(true)
+    let ok = 0
+    for (const file of files) {
+      try {
+        const doc = await api.uploadDocument(active.id, file, '')
+        ok++
+        notify('success', `Uploaded "${doc.filename}". Status: ${doc.status}.`)
+      } catch (err) {
+        notify('error', `${file.name}: ${err.message}`)
+      }
+    }
+    setUploading(false)
+    if (ok) loadDocs()
+  }
+
   const downloadDoc = async (d) => {
     try { await api.downloadDocument(d) } catch (err) { notify('error', err.message) }
   }
@@ -321,7 +334,7 @@ export default function App() {
   const active = notebooks.find((n) => n.id === activeId) || null
 
   return (
-    <div className="h-screen flex bg-black text-neutral-100">
+    <div className="h-screen flex bg-black text-white">
       <Sidebar health={health} onCheckHealth={checkHealth}
         notebooks={notebooks} activeId={activeId} loading={nbLoading} user={user}
         open={sidebarOpen} onClose={() => setSidebarOpen(false)}
@@ -332,45 +345,29 @@ export default function App() {
         onLogout={logout} />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="flex items-center justify-between gap-2 border-b border-neutral-800 px-3 py-2">
+        <header className="flex items-center justify-between gap-2 border-b border-mauve-800 bg-black px-3 py-2">
           <button onClick={() => setSidebarOpen(true)} className={`${btnGhost} md:hidden py-1`}>☰ Menu</button>
-          <span className="hidden md:block text-sm text-neutral-500 truncate">{active ? active.title : 'No notebook selected'}</span>
-          <div className="flex gap-2">
-            <button onClick={() => setLogOpen((o) => !o)} className={`${btnGhost} py-1 ${logOpen ? 'border-red-600 text-white' : ''}`}>API log</button>
-            <button onClick={() => setSourcesOpen((o) => !o)} disabled={!active} className={`${btnGhost} md:hidden py-1`}>{sourcesOpen ? 'Chat' : 'Sources'}</button>
-          </div>
+          <span className="hidden md:block text-sm text-mauve-200 truncate">{active ? active.title : 'No notebook selected'}</span>
         </header>
-
-        {logOpen && <ApiLog />}
 
         {notice && (
           <div role="status" onClick={() => setNotice(null)}
-            className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm cursor-pointer ${notice.type === 'error' ? 'border-red-700 bg-red-950 text-red-200' : 'border-neutral-700 bg-neutral-900 text-neutral-100'}`}>
+            className={`mx-4 mt-3 rounded-lg border px-3 py-2 text-sm cursor-pointer ${notice.type === 'error' ? 'border-rose-400 bg-rose-950 text-rose-100' : 'border-mauve-700 bg-mauve-950 text-white'}`}>
             {notice.type === 'error' ? '✕ ' : '✓ '}{notice.text}
           </div>
         )}
 
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-          <div className={`${sourcesOpen ? 'hidden' : 'flex'} md:flex flex-1 min-w-0 min-h-0`}>
-            <ChatWindow notebook={active} conversation={activeConv} messages={messages}
-              loading={msgLoading} error={chatError} sending={sending} onSend={send} onRefresh={reloadMessages} />
-          </div>
-
-          <aside className={`${sourcesOpen ? 'block' : 'hidden'} md:block md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-neutral-800 bg-neutral-950 overflow-y-auto flex-1 md:flex-none`}>
-            <div className="p-4 space-y-5">
-              <h2 className="font-semibold"><span className="text-red-500">▍</span>Sources</h2>
-              {active ? (
-                <>
-                  <DocumentUpload notebookId={active.id} types={types} onUploaded={loadDocs} notify={notify} />
-                  <DocumentList docs={docs} total={docTotal} loading={docsLoading} error={docsError}
-                    filters={filters} onFilters={setFilters}
-                    onRefresh={loadDocs} onDownload={downloadDoc} onDelete={deleteDoc} onCheck={checkDoc} onSave={saveDoc} />
-                </>
-              ) : (
-                <p className="text-sm text-neutral-500">Select a notebook to manage its documents.</p>
-              )}
-            </div>
-          </aside>
+        <div className="flex-1 min-h-0 flex">
+          <ChatWindow notebook={active} conversation={activeConv} messages={messages}
+            loading={msgLoading} error={chatError} sending={sending} onSend={send} onRefresh={reloadMessages}
+            onUpload={uploadFiles} uploading={uploading}
+            accept={types ? types.extensions.map((e) => `.${e}`).join(',') : undefined}
+            docCount={docs ? docTotal : null}
+            documents={active && (
+              <DocumentList docs={docs} total={docTotal} loading={docsLoading} error={docsError}
+                filters={filters} onFilters={setFilters}
+                onRefresh={loadDocs} onDownload={downloadDoc} onDelete={deleteDoc} onCheck={checkDoc} onSave={saveDoc} />
+            )} />
         </div>
       </div>
     </div>

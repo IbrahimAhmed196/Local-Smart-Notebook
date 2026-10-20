@@ -1,3 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --color-mauve-950: #170b1c;
+  --color-mauve-900: #24112b;
+  --color-mauve-800: #381d42;
+  --color-mauve-700: #52295f;
+  --color-mauve-600: #74427f;
+  --color-mauve-500: #8d5599;
+  --color-mauve-400: #b383bd;
+  --color-mauve-300: #cfaad6;
+  --color-mauve-200: #e2cfe7;
+  --color-mauve-100: #f3e8f5;
+}
+
 html { color-scheme: dark; }

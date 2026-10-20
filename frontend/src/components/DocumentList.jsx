@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { btnGhost, btnPrimary, errorBox, inputCls } from '../ui.js'
 
 const BADGE = {
-  UPLOADED: 'bg-neutral-800 text-neutral-200',
-  QUEUED: 'bg-neutral-800 text-red-300',
-  PROCESSING: 'bg-red-950 text-red-300',
-  COMPLETED: 'bg-red-600 text-white',
-  FAILED: 'bg-red-950 text-red-400 border border-red-700',
+  UPLOADED: 'bg-mauve-900 text-white border border-mauve-700',
+  QUEUED: 'bg-mauve-800 text-white border border-mauve-400',
+  PROCESSING: 'bg-mauve-500 text-white',
+  COMPLETED: 'bg-black text-black font-medium',
+  FAILED: 'bg-rose-950 text-rose-100 border border-rose-400',
 }
 
 const fmtSize = (b) => (b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`)
@@ -28,16 +28,16 @@ function DocItem({ d, onDownload, onDelete, onCheck, onSave }) {
   }
 
   return (
-    <li className="rounded-lg border border-neutral-800 bg-neutral-950 p-3 text-sm">
+    <li className="rounded-lg border border-mauve-800 bg-mauve-950 p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium break-all">{d.filename}</p>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${BADGE[d.status] || BADGE.UPLOADED}`}>{d.status}</span>
       </div>
-      <p className="text-xs text-neutral-500 mt-0.5">
+      <p className="text-xs text-mauve-200 mt-0.5">
         #{d.id} · {d.file_type.toUpperCase()} · {fmtSize(d.file_size)} · {new Date(d.uploaded_at).toLocaleString()}
       </p>
-      {d.description && !editing && <p className="text-xs text-neutral-400 mt-1">{d.description}</p>}
-      {d.error && <p className="text-xs text-red-400 mt-1">{d.error}</p>}
+      {d.description && !editing && <p className="text-xs text-mauve-200 mt-1">{d.description}</p>}
+      {d.error && <p className="text-xs text-rose-300 mt-1">{d.error}</p>}
 
       {editing ? (
         <form onSubmit={save} className="mt-2 space-y-2">
@@ -50,10 +50,10 @@ function DocItem({ d, onDownload, onDelete, onCheck, onSave }) {
         </form>
       ) : (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          <button onClick={() => onDownload(d)} className="text-neutral-300 hover:text-red-400">Download</button>
-          <button onClick={() => setEditing(true)} className="text-neutral-300 hover:text-red-400">Edit</button>
-          <button onClick={() => onCheck(d)} className="text-neutral-300 hover:text-red-400">Check status</button>
-          <button onClick={() => onDelete(d)} className="text-neutral-500 hover:text-red-500">Delete</button>
+          <button onClick={() => onDownload(d)} className="text-mauve-100 hover:text-white">Download</button>
+          <button onClick={() => setEditing(true)} className="text-mauve-100 hover:text-white">Edit</button>
+          <button onClick={() => onCheck(d)} className="text-mauve-100 hover:text-white">Check status</button>
+          <button onClick={() => onDelete(d)} className="text-mauve-200 hover:text-white">Delete</button>
         </div>
       )}
     </li>
@@ -67,7 +67,7 @@ export default function DocumentList({ docs, total, loading, error, filters, onF
     <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium">Documents{docs ? ` (${total})` : ''}</h3>
-        <button onClick={onRefresh} disabled={loading} className="text-xs text-neutral-400 hover:text-red-400 disabled:opacity-40">
+        <button onClick={onRefresh} disabled={loading} className="text-xs text-mauve-200 hover:text-white disabled:opacity-40">
           {loading ? 'Loading…' : 'Refresh'}
         </button>
       </div>
@@ -91,7 +91,7 @@ export default function DocumentList({ docs, total, loading, error, filters, onF
 
       {error && <p className={`${errorBox} mb-2`}>✕ {error}</p>}
       {docs && docs.length === 0 && !loading && !error && (
-        <p className="text-sm text-neutral-500 border border-dashed border-neutral-700 rounded-lg px-3 py-4 text-center">
+        <p className="text-sm text-mauve-200 border border-dashed border-mauve-700 rounded-lg px-3 py-4 text-center">
           {filters.search ? 'No documents match this search.' : 'No documents in this notebook yet.'}
         </p>
       )}
@@ -102,7 +102,7 @@ export default function DocumentList({ docs, total, loading, error, filters, onF
         ))}
       </ul>
       {docs && docs.length > 0 && (
-        <p className="text-xs text-neutral-500 mt-3">
+        <p className="text-xs text-mauve-200 mt-3">
           UPLOADED = stored on the backend. Ingestion/indexing is not implemented yet, so documents stay in this status.
         </p>
       )}
