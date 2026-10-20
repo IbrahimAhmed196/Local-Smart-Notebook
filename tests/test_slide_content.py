@@ -348,3 +348,56 @@ def test_the_ollama_client_sends_the_new_options_and_keeps_its_old_defaults(monk
     client.generate_json("p", SlideContentDraft, temperature=0.1, num_ctx=8192)
     assert sent[-1]["options"] == {"temperature": 0.1, "num_ctx": 8192}
     assert sent[-1]["model"] == "qwen2.5:7b-instruct"
+
+
+# ---- tolerance for the small mistakes a 7B model makes (found in a real Ollama run) ----
+
+def test_draft_accepts_common_model_mistakes():
+    draft = SlideContentDraft.model_validate(
+        {
+            "bullets": ["A plain string bullet", {"text": "A normal bullet", "source_ids": "S1"}],
+            "speaker_notes": ["First sentence.", "Second sentence."],
+            "chart": {
+                "chart_type": "Bar Chart",
+                "document_id": "1",
+                "sheet": "null",
+                "x_column": "Region",
+                "y_columns": "Revenue",
+                "aggregation": "total",
+            },
+        }
+    )
+    assert [b.text for b in draft.bullets] == ["A plain string bullet", "A normal bullet"]
+    assert draft.bullets[1].source_ids == ["S1"]
+    assert draft.speaker_notes == "First sentence. Second sentence."
+    chart = draft.chart
+    assert (chart.chart_type, chart.document_id, chart.sheet, chart.y_columns, chart.aggregation) == (
+        "bar", 1, None, ["Revenue"], "sum",
+    )
+
+
+def test_table_spec_accepts_a_column_string_and_clamps_rows():
+    spec = TableSpec.model_validate({"document_id": "1", "columns": "Region, Revenue", "max_rows": "500"})
+    assert spec.columns == ["Region", "Revenue"] and spec.document_id == 1 and spec.max_rows == 15
+
+
+def test_empty_chart_and_table_become_none():
+    draft = SlideContentDraft.model_validate({"chart": {}, "table": "null"})
+    assert draft.chart is None and draft.table is None
+
+
+def test_client_error_message_keeps_the_real_reason(monkeypatch):
+    class Bad:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "this is not json"}}
+
+    monkeypatch.setattr(ollama_client.requests, "post", lambda *a, **k: Bad())
+    try:
+        ollama_client.OllamaJSONClient().generate_json("x", SlideContentDraft)
+    except RuntimeError as exc:
+        assert "Last error:" in str(exc) and "JSONDecodeError" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")

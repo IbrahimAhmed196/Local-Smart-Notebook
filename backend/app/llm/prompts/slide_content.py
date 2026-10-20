@@ -21,12 +21,17 @@ LAYOUT_RULES: Dict[str, str] = {
     "chart": (
         "Write 1 to 3 bullets in \"bullets\" that explain what the chart shows, and fill \"chart\". "
         "Choose document_id, sheet and column names ONLY from DATA FILES. "
-        "Never write the numbers yourself: they are computed from the file."
+        "Never write the numbers yourself: they are computed from the file. "
+        "Example of the \"chart\" field: {\"chart_type\": \"bar\", \"title\": \"Revenue by region\", "
+        "\"document_id\": 1, \"sheet\": null, \"x_column\": \"Region\", \"y_columns\": [\"Revenue\"], "
+        "\"aggregation\": \"sum\"}. chart_type is bar, line or pie; aggregation is sum, mean, count or none."
     ),
     "table": (
         "Write 1 to 3 bullets in \"bullets\" that explain the table, and fill \"table\". "
         "Choose document_id, sheet and column names ONLY from DATA FILES. "
-        "Never write the cell values yourself: they are read from the file."
+        "Never write the cell values yourself: they are read from the file. "
+        "Example of the \"table\" field: {\"title\": \"Sample rows\", \"document_id\": 1, \"sheet\": null, "
+        "\"columns\": [\"Region\", \"Quarter\", \"Revenue\"], \"max_rows\": 8}."
     ),
 }
 

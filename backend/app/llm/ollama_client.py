@@ -34,6 +34,7 @@ class OllamaJSONClient:
         if num_ctx:
             payload["options"]["num_ctx"] = num_ctx
 
+        last_error = None
         for _ in range(2):
             try:
                 response = requests.post(f"{self.base_url}/api/chat", json=payload)
@@ -41,8 +42,13 @@ class OllamaJSONClient:
                 content = response.json()["message"]["content"]
                 data = json.loads(content)
                 return response_schema(**data)
-            except (Exception, ValueError):
+            except (Exception, ValueError) as exc:
+                last_error = exc
                 continue
-        
-        raise RuntimeError("Failed to generate valid JSON matching schema from Ollama.")
+
+        # Keep the real reason (bad JSON, schema error, connection problem) so it can be read in the logs.
+        raise RuntimeError(
+            "Failed to generate valid JSON matching schema from Ollama. "
+            f"Last error: {type(last_error).__name__}: {str(last_error)[:600]}"
+        )
 
