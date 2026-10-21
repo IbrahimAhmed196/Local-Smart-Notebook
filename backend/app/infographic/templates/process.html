@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import refs, chips, arrow %}
+{% block content %}
+<div class="process">
+  {% for row in vm.rows %}
+  <div class="p-row" style="--cols: {{ vm.cols }};">
+    {% for item in row %}
+    <article class="p-card">
+      <div class="p-num">{{ item.number }}</div>
+      <h2>{{ item.title }}{{ refs(item.refs_label) }}</h2>
+      {% if item.date_label %}<div class="date-pill">{{ item.date_label }}</div>{% endif %}
+      {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+      {{ chips(item.metrics) }}
+    </article>
+    {% if not loop.last %}<div class="p-arrow">{{ arrow() }}</div>{% endif %}
+    {% endfor %}
+  </div>
+  {% if not loop.last %}<div class="p-down">{{ arrow("down") }}</div>{% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

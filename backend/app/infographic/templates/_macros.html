@@ -1,0 +1,15 @@
+{# Small reusable pieces shared by all templates. #}
+
+{% macro refs(label) %}{% if label %}<sup class="refs">[{{ label }}]</sup>{% endif %}{% endmacro %}
+
+{% macro chips(metrics) %}
+{% if metrics %}
+<ul class="chips">
+  {% for m in metrics %}
+  <li class="chip"><span class="chip-value">{{ m.display }}</span><span class="chip-name">{{ m.name }}</span></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}
+
+{% macro arrow(direction="right") %}<svg class="arrow arrow-{{ direction }}" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endmacro %}

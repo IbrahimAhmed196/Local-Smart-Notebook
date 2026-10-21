@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="{{ vm.lang }}" dir="{{ vm.dir }}">
+<head>
+<meta charset="utf-8">
+<title>{{ vm.title }}</title>
+<style>{{ css }}</style>
+</head>
+<body>
+<div id="infographic" class="kind-{{ vm.kind }}" style="--width: {{ vm.width }}px;">
+
+  <header class="banner">
+    <span class="badge">{{ vm.kind_label }}</span>
+    <h1>{{ vm.title }}</h1>
+    {% if vm.subtitle %}<p class="subtitle">{{ vm.subtitle }}</p>{% endif %}
+  </header>
+
+  {% if vm.summary %}
+  <section class="summary">{{ vm.summary }}</section>
+  {% endif %}
+
+  <main>
+  {% block content %}{% endblock %}
+  </main>
+
+  {% if vm.source_groups %}
+  <footer class="sources">
+    <h3>Sources</h3>
+    <ul>
+      {% for g in vm.source_groups %}
+      <li>
+        <span class="src-nums">[{{ g.numbers_label }}]</span>
+        <span class="src-label">{{ g.label }}{% if g.page %} · p. {{ g.page }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </footer>
+  {% endif %}
+
+  <div class="brand">Local Smart Notebook</div>
+</div>
+</body>
+</html>

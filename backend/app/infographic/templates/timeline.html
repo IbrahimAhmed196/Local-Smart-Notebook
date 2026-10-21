@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import refs, chips %}
+{% block content %}
+<div class="timeline">
+  {% for item in vm.entries %}
+  <div class="t-row t-{{ item.side }}">
+    <article class="t-card">
+      <div class="date-pill {% if not item.date_label %}unknown{% endif %}">{{ item.date_label or "Date not stated" }}</div>
+      <h2>{{ item.title }}{{ refs(item.refs_label) }}</h2>
+      {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+      {{ chips(item.metrics) }}
+    </article>
+    <div class="t-dot"></div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

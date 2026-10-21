@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import refs %}
+{% block content %}
+<div class="matrix" style="--cols: {{ vm.entries|length }};">
+  <div class="m-corner"></div>
+  {% for item in vm.entries %}
+  <div class="m-head">
+    <h2>{{ item.title }}{{ refs(item.refs_label) }}</h2>
+    {% if item.date_label %}<div class="date-pill">{{ item.date_label }}</div>{% endif %}
+    {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+  </div>
+  {% endfor %}
+
+  {% for row in vm.matrix %}
+  {% set zebra = "z" if loop.index is odd else "" %}
+  <div class="m-label {{ zebra }}">{{ row.name }}</div>
+  {% for cell in row.cells %}
+  <div class="m-cell {{ zebra }} {% if cell is none %}missing{% endif %}">{{ cell if cell is not none else "—" }}</div>
+  {% endfor %}
+  {% endfor %}
+</div>
+{% if vm.matrix %}<p class="note">“—” means the source did not report this value.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import refs, chips %}
+{% block content %}
+{% if vm.charts %}
+<section class="charts">
+  {% for chart in vm.charts %}
+  <div class="chart">
+    <h3>{{ chart.name }}{% if chart.unit %} <small>({{ chart.unit }})</small>{% endif %}</h3>
+    {% for bar in chart.bars %}
+    <div class="bar-row">
+      <div class="bar-label">{{ bar.title }}{{ refs(bar.refs_label) }}</div>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ bar.pct }}%;"></div></div>
+      <div class="bar-value">{{ bar.display }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if vm.tiles %}
+<section class="tiles">
+  {% for tile in vm.tiles %}
+  <article class="tile">
+    <h2>{{ tile.title }}{{ refs(tile.refs_label) }}</h2>
+    {% if tile.date_label %}<div class="date-pill">{{ tile.date_label }}</div>{% endif %}
+    {% if tile.description %}<p>{{ tile.description }}</p>{% endif %}
+    {{ chips(tile.metrics) }}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}
