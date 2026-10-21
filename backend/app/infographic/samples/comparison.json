@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "title": "Cloud vs Local LLM Deployment",
+  "subtitle": "Three ways to run a language model",
+  "type": "comparison",
+  "summary": "Local deployment trades convenience for privacy and predictable cost.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "Cloud API",
+      "description": "Hosted model behind a paid API.",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Data privacy",
+          "value": "Leaves the device",
+          "unit": null
+        },
+        {
+          "name": "Cost per month",
+          "value": 120,
+          "unit": "USD"
+        },
+        {
+          "name": "Internet required",
+          "value": true,
+          "unit": null
+        },
+        {
+          "name": "Setup time",
+          "value": 2,
+          "unit": "hours"
+        }
+      ],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_2",
+      "title": "Local (Ollama)",
+      "description": "Model runs on the user's own machine.",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Data privacy",
+          "value": "Stays on the device",
+          "unit": null
+        },
+        {
+          "name": "Cost per month",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "name": "Internet required",
+          "value": false,
+          "unit": null
+        },
+        {
+          "name": "Setup time",
+          "value": 3,
+          "unit": "hours"
+        }
+      ],
+      "source_refs": [
+        "src_2"
+      ]
+    },
+    {
+      "id": "item_3",
+      "title": "Private server",
+      "description": "Self-hosted GPU server for a team.",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Data privacy",
+          "value": "Stays in the organisation",
+          "unit": null
+        },
+        {
+          "name": "Cost per month",
+          "value": 450,
+          "unit": "USD"
+        },
+        {
+          "name": "Internet required",
+          "value": false,
+          "unit": null
+        }
+      ],
+      "source_refs": [
+        "src_3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src_1",
+      "label": "Deployment Guide",
+      "page": 4,
+      "excerpt": "Cloud APIs send prompts to the provider."
+    },
+    {
+      "id": "src_2",
+      "label": "Deployment Guide",
+      "page": 6,
+      "excerpt": "Ollama runs models locally."
+    },
+    {
+      "id": "src_3",
+      "label": "Deployment Guide",
+      "page": 9,
+      "excerpt": "Teams often self-host on a GPU server."
+    }
+  ]
+}

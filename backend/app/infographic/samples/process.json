@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "title": "Machine Learning Lifecycle",
+  "subtitle": "The main stages of an ML project",
+  "type": "process",
+  "summary": "An ML project moves through six connected stages, and the last one feeds back into the first.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "Data Collection",
+      "description": "Gather relevant data for the problem.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_2",
+      "title": "Data Preparation",
+      "description": "Clean, label and split the collected data.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_3",
+      "title": "Model Training",
+      "description": "Fit a model on the prepared training data.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_2"
+      ]
+    },
+    {
+      "id": "item_4",
+      "title": "Evaluation",
+      "description": "Measure performance on data the model has not seen.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_2"
+      ]
+    },
+    {
+      "id": "item_5",
+      "title": "Deployment",
+      "description": "Serve the model to real users or systems.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_3"
+      ]
+    },
+    {
+      "id": "item_6",
+      "title": "Monitoring",
+      "description": "Track drift and retrain when quality drops.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src_1",
+      "label": "Machine Learning Notes",
+      "page": 2,
+      "excerpt": "Data collection and preparation are early stages."
+    },
+    {
+      "id": "src_2",
+      "label": "Machine Learning Notes",
+      "page": 3,
+      "excerpt": "The prepared data is used for model training."
+    },
+    {
+      "id": "src_3",
+      "label": "Machine Learning Notes",
+      "page": 5,
+      "excerpt": "Deployment is followed by monitoring."
+    }
+  ]
+}

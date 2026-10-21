@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "title": "An Intentionally Very Long Infographic Title That Must Wrap Across Several Lines Without Breaking The Banner",
+  "subtitle": "",
+  "type": "process",
+  "summary": "A short summary line.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "Step 1",
+      "description": "This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. ",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_2",
+      "title": "Step 2",
+      "description": "",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Throughput",
+          "value": 1234567.891,
+          "unit": "items/s"
+        }
+      ],
+      "source_refs": []
+    },
+    {
+      "id": "item_3",
+      "title": "Step 3: Extraordinarily_long_unbroken_identifier_3",
+      "description": "This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. ",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_4",
+      "title": "Step 4",
+      "description": "",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_5",
+      "title": "Step 5",
+      "description": "This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. ",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_6",
+      "title": "Step 6: Extraordinarily_long_unbroken_identifier_6",
+      "description": "",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_7",
+      "title": "Step 7",
+      "description": "This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. ",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    },
+    {
+      "id": "item_8",
+      "title": "Step 8",
+      "description": "",
+      "date": null,
+      "metrics": [],
+      "source_refs": []
+    }
+  ],
+  "sources": []
+}

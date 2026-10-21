@@ -1,0 +1,266 @@
+{
+  "schema_version": "1.0",
+  "title": "Urban Transport Survey",
+  "subtitle": "How 1,000 residents commute to work",
+  "type": "statistics",
+  "summary": "Buses carry the most commuters, while cars cost the most per month.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "Bus",
+      "description": "Bus is the most common way to commute.",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Number of people",
+          "value": 320,
+          "unit": "people"
+        },
+        {
+          "name": "Usage percentage",
+          "value": 32,
+          "unit": "%"
+        },
+        {
+          "name": "Average one-way commute",
+          "value": 38,
+          "unit": "minutes"
+        },
+        {
+          "name": "Monthly cost",
+          "value": 30,
+          "unit": "USD"
+        }
+      ],
+      "source_refs": [
+        "src_1",
+        "src_2",
+        "src_3"
+      ]
+    },
+    {
+      "id": "item_2",
+      "title": "Metro",
+      "description": "",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Number of people",
+          "value": 250,
+          "unit": "people"
+        },
+        {
+          "name": "Usage percentage",
+          "value": 25,
+          "unit": "%"
+        },
+        {
+          "name": "Average one-way commute",
+          "value": 31,
+          "unit": "minutes"
+        },
+        {
+          "name": "Monthly cost",
+          "value": 55,
+          "unit": "USD"
+        }
+      ],
+      "source_refs": [
+        "src_4",
+        "src_5",
+        "src_6"
+      ]
+    },
+    {
+      "id": "item_3",
+      "title": "Car",
+      "description": "",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Number of people",
+          "value": 280,
+          "unit": "people"
+        },
+        {
+          "name": "Usage percentage",
+          "value": 28,
+          "unit": "%"
+        },
+        {
+          "name": "Average one-way commute",
+          "value": 42,
+          "unit": "minutes"
+        },
+        {
+          "name": "Monthly cost",
+          "value": 190,
+          "unit": "USD"
+        }
+      ],
+      "source_refs": [
+        "src_7",
+        "src_8",
+        "src_9"
+      ]
+    },
+    {
+      "id": "item_4",
+      "title": "Bicycle",
+      "description": "",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Number of people",
+          "value": 90,
+          "unit": "people"
+        },
+        {
+          "name": "Usage percentage",
+          "value": 9,
+          "unit": "%"
+        },
+        {
+          "name": "Average one-way commute",
+          "value": 24,
+          "unit": "minutes"
+        },
+        {
+          "name": "Monthly cost",
+          "value": 8,
+          "unit": "USD"
+        }
+      ],
+      "source_refs": [
+        "src_10",
+        "src_11",
+        "src_12"
+      ]
+    },
+    {
+      "id": "item_5",
+      "title": "Walking",
+      "description": "",
+      "date": null,
+      "metrics": [
+        {
+          "name": "Number of people",
+          "value": 60,
+          "unit": "people"
+        },
+        {
+          "name": "Usage percentage",
+          "value": 6,
+          "unit": "%"
+        },
+        {
+          "name": "Average one-way commute",
+          "value": 19,
+          "unit": "minutes"
+        },
+        {
+          "name": "Monthly cost",
+          "value": 0,
+          "unit": "USD"
+        }
+      ],
+      "source_refs": [
+        "src_13",
+        "src_14",
+        "src_15"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src_1",
+      "label": "Urban Transport Survey - Transport Mode",
+      "page": null,
+      "excerpt": "Bus: 320 people (32%)"
+    },
+    {
+      "id": "src_2",
+      "label": "Urban Transport Survey - Average One-Way Commute",
+      "page": null,
+      "excerpt": "Bus: 38 minutes"
+    },
+    {
+      "id": "src_3",
+      "label": "Urban Transport Survey - Monthly Cost Per Person",
+      "page": null,
+      "excerpt": "Bus: $30"
+    },
+    {
+      "id": "src_4",
+      "label": "Urban Transport Survey - Transport Mode",
+      "page": null,
+      "excerpt": "Metro: 250 people (25%)"
+    },
+    {
+      "id": "src_5",
+      "label": "Urban Transport Survey - Average One-Way Commute",
+      "page": null,
+      "excerpt": "Metro: 31 minutes"
+    },
+    {
+      "id": "src_6",
+      "label": "Urban Transport Survey - Monthly Cost Per Person",
+      "page": null,
+      "excerpt": "Metro: $55"
+    },
+    {
+      "id": "src_7",
+      "label": "Urban Transport Survey - Transport Mode",
+      "page": null,
+      "excerpt": "Car: 280 people (28%)"
+    },
+    {
+      "id": "src_8",
+      "label": "Urban Transport Survey - Average One-Way Commute",
+      "page": null,
+      "excerpt": "Car: 42 minutes"
+    },
+    {
+      "id": "src_9",
+      "label": "Urban Transport Survey - Monthly Cost Per Person",
+      "page": null,
+      "excerpt": "Car: $190"
+    },
+    {
+      "id": "src_10",
+      "label": "Urban Transport Survey - Transport Mode",
+      "page": null,
+      "excerpt": "Bicycle: 90 people (9%)"
+    },
+    {
+      "id": "src_11",
+      "label": "Urban Transport Survey - Average One-Way Commute",
+      "page": null,
+      "excerpt": "Bicycle: 24 minutes"
+    },
+    {
+      "id": "src_12",
+      "label": "Urban Transport Survey - Monthly Cost Per Person",
+      "page": null,
+      "excerpt": "Bicycle: $8"
+    },
+    {
+      "id": "src_13",
+      "label": "Urban Transport Survey - Transport Mode",
+      "page": null,
+      "excerpt": "Walking: 60 people (6%)"
+    },
+    {
+      "id": "src_14",
+      "label": "Urban Transport Survey - Average One-Way Commute",
+      "page": null,
+      "excerpt": "Walking: 19 minutes"
+    },
+    {
+      "id": "src_15",
+      "label": "Urban Transport Survey - Monthly Cost Per Person",
+      "page": null,
+      "excerpt": "Walking: $0"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "title": "Milestones in Artificial Intelligence",
+  "subtitle": "From the imitation game to conversational models",
+  "type": "timeline",
+  "summary": "Seven decades of research moved AI from theory to everyday tools.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "Turing proposes the imitation game",
+      "description": "Computing Machinery and Intelligence is published.",
+      "date": "1950-01-01",
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_2",
+      "title": "Dartmouth workshop",
+      "description": "The term artificial intelligence is coined.",
+      "date": "1956-01-01",
+      "metrics": [],
+      "source_refs": [
+        "src_2"
+      ]
+    },
+    {
+      "id": "item_3",
+      "title": "Deep Blue beats Kasparov",
+      "description": "A computer wins a match against the world chess champion.",
+      "date": "1997-05-11",
+      "metrics": [],
+      "source_refs": [
+        "src_3"
+      ]
+    },
+    {
+      "id": "item_4",
+      "title": "AlexNet wins ImageNet",
+      "description": "Deep convolutional networks transform computer vision.",
+      "date": "2012-01-01",
+      "metrics": [],
+      "source_refs": [
+        "src_4"
+      ]
+    },
+    {
+      "id": "item_5",
+      "title": "The Transformer is introduced",
+      "description": "Attention Is All You Need replaces recurrence.",
+      "date": "2017-06-12",
+      "metrics": [],
+      "source_refs": [
+        "src_5"
+      ]
+    },
+    {
+      "id": "item_6",
+      "title": "ChatGPT is released",
+      "description": "Conversational LLMs reach a mass audience.",
+      "date": "2022-11-30",
+      "metrics": [],
+      "source_refs": [
+        "src_6"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src_1",
+      "label": "AI History Notes",
+      "page": 2,
+      "excerpt": "Turing proposes the imitation game"
+    },
+    {
+      "id": "src_2",
+      "label": "AI History Notes",
+      "page": 3,
+      "excerpt": "Dartmouth workshop"
+    },
+    {
+      "id": "src_3",
+      "label": "AI History Notes",
+      "page": 4,
+      "excerpt": "Deep Blue beats Kasparov"
+    },
+    {
+      "id": "src_4",
+      "label": "AI History Notes",
+      "page": 5,
+      "excerpt": "AlexNet wins ImageNet"
+    },
+    {
+      "id": "src_5",
+      "label": "AI History Notes",
+      "page": 6,
+      "excerpt": "The Transformer is introduced"
+    },
+    {
+      "id": "src_6",
+      "label": "AI History Notes",
+      "page": 7,
+      "excerpt": "ChatGPT is released"
+    }
+  ]
+}
