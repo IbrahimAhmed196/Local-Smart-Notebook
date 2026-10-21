@@ -50,11 +50,10 @@ All paths use the same optional `API_PREFIX` as the other endpoints. All present
 
 Use the `id` returned by the create request to poll status until `COMPLETED` or `FAILED`. Review `warnings` even when generation completes: some slides may use fallback content. A completed file does not guarantee factual accuracy.
 
-Before generating, apply the database migrations, ensure Ollama is running with `qwen2.5:7b-instruct` installed, and install `openpyxl` in the backend environment if using XLSX files:
+Before generating, apply the database migrations, ensure Ollama is running with `qwen2.5:7b-instruct` installed:
 
 ```powershell
 ollama pull qwen2.5:7b-instruct
-python -m pip install openpyxl
 ```
 
 Avoid `--reload` while a presentation job is running. From `backend/`, use `uvicorn app.main:app` for uninterrupted testing.
