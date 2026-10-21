@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.database import Base
@@ -23,6 +23,8 @@ class Notebook(Base):
     owner = relationship("User", back_populates="notebooks")
     documents = relationship("Document", back_populates="notebook", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="notebook", cascade="all, delete-orphan")
+    presentations = relationship("Presentation", back_populates="notebook", cascade="all, delete-orphan")
+
 
 class DocumentStatus:
     """Lifecycle of a document. Task 3 only uses UPLOADED; the AI ingestion
@@ -73,3 +75,26 @@ class Message(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="messages")
+
+class PresentationStatus:
+    """Lifecycle of a generated presentation."""
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+ 
+class Presentation(Base):
+    __tablename__ = "presentations"
+    id = Column(Integer, primary_key=True, index=True)
+    notebook_id = Column(Integer, ForeignKey("notebooks.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    status = Column(String, nullable=False, default=PresentationStatus.PENDING)
+    stage = Column(String, nullable=True)  # queued / outline / content 3/8 / rendering / done
+    options = Column(JSON, nullable=False)  # what the user asked for
+    deck = Column(JSON, nullable=True)  # Task 2's deck JSON (PresentationContent)
+    file_path = Column(String, nullable=True)  # relative to data/artifacts
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+ 
+    notebook = relationship("Notebook", back_populates="presentations")

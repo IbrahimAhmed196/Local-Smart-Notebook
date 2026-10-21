@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import decode_access_token
 from app.database.database import get_db
-from app.database.models import Conversation, Document, Notebook, User
+from app.database.models import Conversation, Document, Notebook, User, Presentation
 from app.database.repositories import user_repo
 
 # Must match the real login path; it follows API_PREFIX from the settings
@@ -61,3 +61,14 @@ def get_owned_conversation(
     if conversation is None or conversation.notebook.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
     return conversation
+
+def get_owned_presentation(
+    presentation_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Presentation:
+    presentation = db.get(Presentation, presentation_id)
+    if presentation is None or presentation.notebook.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Presentation not found")
+    return presentation
+

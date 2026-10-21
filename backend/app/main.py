@@ -4,12 +4,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.infographic.router import router as infographic_router
-from app.api import auth, chat, documents, projects
+from app.api import auth, chat, documents, projects, presentations
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
 from app.database import models  # noqa: F401  (registers the tables for Alembic)
-from app.services import file_storage
+from app.services import file_storage, presentation_service 
 
 # NOTE: the tables are created with Alembic ("alembic upgrade head"), not with
 # Base.metadata.create_all(). Mixing the two makes Alembic fail with "table already exists".
@@ -19,6 +19,7 @@ from app.services import file_storage
 async def lifespan(app: FastAPI):
     setup_logging()
     file_storage.ensure_dirs()  # data/uploads and data/temporary
+    presentation_service.fail_interrupted_jobs()
     yield
 
 
@@ -43,6 +44,7 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(documents.router, prefix=settings.api_prefix)
 app.include_router(chat.router, prefix=settings.api_prefix)
+app.include_router(presentations.router, prefix=settings.api_prefix) 
 # Later tasks: query, summaries, analytics, ...
 
 

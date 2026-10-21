@@ -6,6 +6,7 @@ from app.database.models import Notebook, User
 from app.database.repositories import project_repo
 from app.schemas.projects import NotebookCreate
 from app.services import document_service
+from app.artifacts import manager as artifacts 
 
 
 def create_notebook(db: Session, user: User, data: NotebookCreate) -> Notebook:
@@ -28,3 +29,4 @@ def delete_notebook(db: Session, notebook: Notebook) -> None:
     notebook_id = notebook.id  # read it before the row is gone
     project_repo.delete(db, notebook)  # database rows ...
     document_service.purge_notebook_files(notebook_id)  # ... and the files on disk
+    artifacts.purge_notebook_artifacts(notebook_id) 
