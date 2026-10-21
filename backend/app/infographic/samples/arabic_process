@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "title": "دورة حياة مشروع تعلم الآلة",
+  "subtitle": "المراحل الرئيسية للمشروع",
+  "type": "process",
+  "summary": "يمر المشروع بأربع مراحل مترابطة من البيانات إلى التقييم.",
+  "items": [
+    {
+      "id": "item_1",
+      "title": "جمع البيانات",
+      "description": "تجميع البيانات المناسبة للمشكلة.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_2",
+      "title": "تجهيز البيانات",
+      "description": "تنظيف البيانات وتقسيمها.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_3",
+      "title": "تدريب النموذج",
+      "description": "تدريب النموذج على البيانات المجهزة.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    },
+    {
+      "id": "item_4",
+      "title": "التقييم",
+      "description": "قياس أداء النموذج على بيانات جديدة.",
+      "date": null,
+      "metrics": [],
+      "source_refs": [
+        "src_1"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "src_1",
+      "label": "ملاحظات تعلم الآلة",
+      "page": 2,
+      "excerpt": "مراحل المشروع"
+    }
+  ]
+}
