@@ -1,4 +1,5 @@
 
+
 import re
 from dataclasses import dataclass
 from typing import Optional
@@ -17,17 +18,26 @@ class Fact:
 
 # Metric names in the infographic JSON -> canonical fact keys.
 METRIC_ALIASES = {
-    "usage percentage": "usage_percentage",
-    "share in percent": "usage_percentage",
-    "percentage of respondents": "usage_percentage",
-    "average one-way commute": "commute_minutes",
-    "average one-way commute time": "commute_minutes",
-    "commute time": "commute_minutes",
-    "monthly cost": "monthly_cost",
-    "monthly cost per person": "monthly_cost",
+    # People count
+    "people": "people_count",
+    "people count": "people_count",
     "share in people": "people_count",
     "number of people": "people_count",
     "respondent count": "people_count",
+
+    # Usage percentage
+    "usage percentage": "usage_percentage",
+    "share in percent": "usage_percentage",
+    "percentage of respondents": "usage_percentage",
+
+    # Commute duration
+    "average one-way commute": "commute_minutes",
+    "average one-way commute time": "commute_minutes",
+    "commute time": "commute_minutes",
+
+    # Monthly cost
+    "monthly cost": "monthly_cost",
+    "monthly cost per person": "monthly_cost",
 }
 
 SECTION_ALIASES = {
@@ -36,12 +46,6 @@ SECTION_ALIASES = {
     "average one-way commute": "commute",
     "average one-way commute times": "commute",
     "monthly cost per person": "cost",
-}
-
-SECTION_METRICS = {
-    "transport": ("people_count", "usage_percentage"),
-    "commute": ("commute_minutes",),
-    "cost": ("monthly_cost",),
 }
 
 MODE_NAMES = ("Bus", "Metro", "Car", "Bicycle", "Walking")
@@ -57,17 +61,17 @@ def parse_number(raw: str) -> float:
 
 def extract_facts(report: str) -> list[Fact]:
     """
-    Extract canonical facts from a section-based transport report.
+    Extract verifiable metrics from a section-based transport report.
 
-    Expected examples:
-      Transport Mode
-      Bus: 320 people (32%)
+    Supported examples:
+        Transport Mode
+        Bus: 320 people (32%)
 
-      Average One-Way Commute
-      Bus: 38 minutes
+        Average One-Way Commute
+        Bus: 38 minutes
 
-      Monthly Cost Per Person
-      Bus: $30
+        Monthly Cost Per Person
+        Bus: $30
     """
     facts: list[Fact] = []
     current_section: Optional[str] = None
@@ -78,6 +82,7 @@ def extract_facts(report: str) -> list[Fact]:
             continue
 
         heading = re.sub(r"[:#\s]+$", "", line).strip().casefold()
+
         if heading in SECTION_ALIASES:
             current_section = SECTION_ALIASES[heading]
             continue
@@ -90,18 +95,19 @@ def extract_facts(report: str) -> list[Fact]:
                 name
                 for name in MODE_NAMES
                 if re.match(
-                    rf"^\s*{re.escape(name)}\s*[:|\-]",
+                    rf"^{re.escape(name)}\s*:",
                     line,
                     flags=re.IGNORECASE,
                 )
             ),
             None,
         )
+
         if mode is None:
             continue
 
         body = re.sub(
-            rf"^\s*{re.escape(mode)}\s*[:|\-]\s*",
+            rf"^{re.escape(mode)}\s*:\s*",
             "",
             line,
             flags=re.IGNORECASE,
@@ -114,6 +120,7 @@ def extract_facts(report: str) -> list[Fact]:
                 body,
                 re.IGNORECASE,
             )
+
             percent_match = re.search(
                 r"(?<![\d.])([\d.]+)\s*%",
                 body,
@@ -129,6 +136,7 @@ def extract_facts(report: str) -> list[Fact]:
                         evidence=line,
                     )
                 )
+
             if percent_match:
                 facts.append(
                     Fact(
@@ -146,6 +154,7 @@ def extract_facts(report: str) -> list[Fact]:
                 body,
                 re.IGNORECASE,
             )
+
             if match:
                 facts.append(
                     Fact(
@@ -163,8 +172,10 @@ def extract_facts(report: str) -> list[Fact]:
                 body,
                 re.IGNORECASE,
             )
+
             if match:
                 raw_value = match.group(1) or match.group(2)
+
                 facts.append(
                     Fact(
                         mode=mode.casefold(),
@@ -183,7 +194,9 @@ def metric_key(name: str) -> Optional[str]:
 
 
 def numeric_equal(left: int | float, right: float) -> bool:
-    return abs(float(left) - right) < 1e-9
+    return (
+        abs(float(left) - right) < 1e-9
+    )
 
 
 def validate_infographic_data(
@@ -193,39 +206,49 @@ def validate_infographic_data(
     errors: list[str] = []
     report_normalized = normalize(original_report)
 
-    # A source excerpt must genuinely occur in the original report.
+    # Ensure every source excerpt occurs in the original report.
     for source in plan.sources:
         if not source.excerpt.strip():
-            errors.append(f"Source {source.id}: excerpt is empty.")
+            errors.append(
+                f"Source {source.id}: excerpt is empty."
+            )
         elif normalize(source.excerpt) not in report_normalized:
             errors.append(
                 f"Source {source.id}: excerpt does not match the report."
             )
 
     facts = extract_facts(original_report)
+
     facts_by_key: dict[tuple[str, str], list[Fact]] = {}
 
     for fact in facts:
         key = (fact.mode, fact.metric)
         facts_by_key.setdefault(key, []).append(fact)
 
-    sources_by_id = {source.id: source for source in plan.sources}
+    sources_by_id = {
+        source.id: source for source in plan.sources
+    }
 
     for item in plan.items:
         mode = item.title.strip().casefold()
 
-        # Ensure references exist and their evidence is valid.
+        # Validate source references and collect their evidence.
         referenced_sources = []
+
         for source_id in item.source_refs:
             source = sources_by_id.get(source_id)
+
             if source is None:
                 errors.append(
-                    f"Item {item.id}: unknown source reference {source_id}."
+                    f"Item {item.id}: unknown source reference "
+                    f"{source_id}."
                 )
             else:
                 referenced_sources.append(source)
 
-        evidence = " ".join(s.excerpt for s in referenced_sources)
+        evidence = " ".join(
+            source.excerpt for source in referenced_sources
+        )
 
         if not referenced_sources:
             errors.append(
@@ -240,7 +263,6 @@ def validate_infographic_data(
         for metric in item.metrics:
             key = metric_key(metric.name)
 
-            # Do not silently claim verification for an unknown metric.
             if key is None:
                 errors.append(
                     f"Item {item.id}: metric '{metric.name}' has no "
@@ -258,6 +280,7 @@ def validate_infographic_data(
                 continue
 
             matching_facts = facts_by_key.get((mode, key), [])
+
             if not matching_facts:
                 errors.append(
                     f"Item {item.id}, metric '{metric.name}': "
@@ -271,7 +294,7 @@ def validate_infographic_data(
                 for fact in matching_facts
             ):
                 expected = ", ".join(
-                    str(f.value) for f in matching_facts
+                    str(fact.value) for fact in matching_facts
                 )
                 errors.append(
                     f"Item {item.id}, metric '{metric.name}': "
@@ -280,12 +303,13 @@ def validate_infographic_data(
                 )
                 continue
 
-            # The referenced evidence must support the same fact.
+            # The referenced evidence must support this exact fact.
             evidence_facts = [
                 fact
                 for fact in matching_facts
                 if normalize(fact.evidence) in normalize(evidence)
             ]
+
             if not evidence_facts:
                 errors.append(
                     f"Item {item.id}, metric '{metric.name}': "

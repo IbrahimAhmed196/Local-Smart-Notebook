@@ -1,0 +1,1 @@
+{"detail":{"error":"Infographic generation or rendering failed.","details":"Could not render the PNG (It looks like you are using Playwright Sync API inside the asyncio loop.). If Chromium is missing, run:  playwright install chromium"}}

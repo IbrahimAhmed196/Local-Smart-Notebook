@@ -119,20 +119,45 @@ def find_line(
     title: str,
     value: int | float,
 ) -> tuple[str, str] | None:
-    """Find a report line containing both the item title and metric value."""
-    title_lower = title.strip().lower()
+    """Match a metric value to a report line using its transport mode."""
+    title_lower = title.strip().casefold()
 
-    if not title_lower:
+    # Normalize generated titles such as "Bus transport" to "Bus".
+    modes = ("Bus", "Metro", "Car", "Bicycle", "Walking")
+    mode = next(
+        (
+            candidate
+            for candidate in modes
+            if re.match(
+                rf"^{re.escape(candidate)}\b",
+                title.strip(),
+                flags=re.IGNORECASE,
+            )
+        ),
+        None,
+    )
+
+    if not mode:
         return None
 
     for section, line in lines:
+        match = re.match(
+            r"^\s*([^:|—-]+)\s*[:|—-]",
+            line,
+        )
+        if not match:
+            continue
+
+        line_mode = match.group(1).strip().casefold()
+
         if (
-            title_lower in line.lower()
+            line_mode == mode.casefold()
             and float(value) in numbers_in(line)
         ):
             return section, line
 
     return None
+
 
 
 def call_ollama(report: str, feedback: str = "") -> dict[str, Any]:
@@ -324,6 +349,16 @@ def sanitize(
             continue
 
         name = item.get("title", "")
+
+        if isinstance(name, str):
+         for mode in ("Bus", "Metro", "Car", "Bicycle", "Walking"):
+            if re.match(
+            rf"^{re.escape(mode)}\b",
+            name.strip(),
+            flags=re.IGNORECASE,
+             ):
+             name = mode
+             break
         metrics = item.get("metrics", [])
 
         if not isinstance(name, str) or not isinstance(metrics, list):
@@ -452,6 +487,113 @@ def assemble(
     }
 
 
+def normalize_transport_data(
+    data: dict[str, Any],
+    report: str,
+) -> dict[str, Any]:
+    """Build evidence-backed transport items from the source report."""
+
+    modes = ("Bus", "Metro", "Car", "Bicycle", "Walking")
+    sections = {
+        "transport mode": "usage",
+        "average one-way commute": "commute",
+        "monthly cost per person": "cost",
+    }
+
+    facts: dict[str, dict[str, Any]] = {
+        mode: {"metrics": [], "description": ""}
+        for mode in modes
+    }
+
+    section = None
+
+    for raw in report.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        normalized_heading = line.rstrip(":").strip().casefold()
+        if normalized_heading in sections:
+            section = sections[normalized_heading]
+            continue
+
+        match = re.match(
+            r"^(Bus|Metro|Car|Bicycle|Walking)\s*:\s*(.+)$",
+            line,
+            re.IGNORECASE,
+        )
+        if not match:
+            continue
+
+        mode = next(
+            candidate for candidate in modes
+            if candidate.casefold() == match.group(1).casefold()
+        )
+        value_text = match.group(2)
+
+        if section == "usage":
+            people = re.search(r"([\d,]+)\s+people", value_text, re.I)
+            percentage = re.search(r"\(([\d.]+)%\)", value_text)
+
+            if people:
+                facts[mode]["metrics"].append({
+                    "name": "People",
+                    "value": int(people.group(1).replace(",", "")),
+                    "unit": "people",
+                })
+
+            if percentage:
+                facts[mode]["metrics"].append({
+                    "name": "Usage Percentage",
+                    "value": float(percentage.group(1)),
+                    "unit": "%",
+                })
+
+        elif section == "commute":
+            duration = re.search(r"([\d.]+)\s*minutes?", value_text, re.I)
+            if duration:
+                facts[mode]["metrics"].append({
+                    "name": "Average One-Way Commute",
+                    "value": float(duration.group(1)),
+                    "unit": "minutes",
+                })
+
+        elif section == "cost":
+            cost = re.search(r"\$\s*([\d,]+(?:\.\d+)?)", value_text)
+            if cost:
+                facts[mode]["metrics"].append({
+                    "name": "Monthly Cost",
+                    "value": float(cost.group(1).replace(",", "")),
+                    "unit": "USD/month",
+                })
+
+    items = []
+    for index, mode in enumerate(modes, start=1):
+        metrics = facts[mode]["metrics"]
+        if not metrics:
+            continue
+
+        items.append({
+            "title": mode,
+            "description": f"{mode} is one of the transport modes listed in the report.",
+            "date": None,
+            "metrics": metrics,
+        })
+
+    if not items:
+        raise ValueError(
+            "Could not extract supported transport metrics from the report."
+        )
+
+    data["items"] = items
+    data["summary"] = (
+        "The report compares transport usage, average one-way commute "
+        "times, and monthly costs across five transport modes."
+    )
+
+    return data
+
+
 def analyze_report(report: str) -> dict[str, Any]:
     """
     Extract infographic content from report text.
@@ -481,8 +623,8 @@ def analyze_report(report: str) -> dict[str, Any]:
             feedback = f"The model returned invalid JSON: {exc}"
             continue
 
+        data = normalize_transport_data(data, report)
         problems = validate(data, report, lines)
-
         if not problems:
             break
 

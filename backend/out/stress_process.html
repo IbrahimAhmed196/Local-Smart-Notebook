@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<title>An Intentionally Very Long Infographic Title That Must Wrap Across Several Lines Without Breaking The Banner</title>
+<style>/* Local Smart Notebook - infographic styles.
+   Offline: system fonts only. Logical properties (inline-start/end) make RTL (Arabic) work automatically. */
+:root {
+  --bg: #f3f5fa; --card: #ffffff; --ink: #1b2333; --muted: #5d6b82; --line: #e1e6f0;
+  --accent: #3b6cf6; --accent-2: #6a4cf0; --accent-soft: #eaf0ff;
+}
+.kind-process    { --accent: #3b6cf6; --accent-2: #6a4cf0; --accent-soft: #eaf0ff; }
+.kind-timeline   { --accent: #0f9d8a; --accent-2: #2b8fe0; --accent-soft: #e2f6f2; }
+.kind-comparison { --accent: #e8590c; --accent-2: #d6336c; --accent-soft: #fff0e6; }
+.kind-statistics { --accent: #7048e8; --accent-2: #1c7ed6; --accent-soft: #f0ebff; }
+
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); }
+
+#infographic {
+  width: var(--width, 1200px);
+  padding: 56px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "Noto Sans", "Noto Sans Arabic", "Helvetica Neue", Arial, Tahoma, sans-serif;
+  font-size: 18px; line-height: 1.5;
+}
+
+/* ---------- header ---------- */
+.banner {
+  padding: 44px 48px; border-radius: 28px; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.badge {
+  display: inline-block; padding: 4px 16px; border-radius: 999px; margin-bottom: 16px;
+  background: rgba(255,255,255,.22); font-size: 14px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.banner h1 { font-size: 44px; line-height: 1.15; font-weight: 800; overflow-wrap: anywhere; }
+.banner .subtitle { margin-top: 12px; font-size: 20px; color: rgba(255,255,255,.92); }
+
+.summary {
+  margin: 28px 0 8px; padding: 22px 28px; background: var(--card); border-radius: 18px;
+  border-inline-start: 6px solid var(--accent); font-size: 19px; color: var(--ink);
+  box-shadow: 0 2px 10px rgba(27,35,51,.06);
+}
+main { margin-top: 36px; }
+
+/* ---------- shared pieces ---------- */
+h2 { font-size: 22px; line-height: 1.25; font-weight: 700; overflow-wrap: anywhere; }
+p  { color: var(--muted); overflow-wrap: anywhere; }
+.refs { color: var(--accent); font-size: 12px; font-weight: 700; margin-inline-start: 4px; letter-spacing: .02em; }
+
+.date-pill {
+  display: inline-block; margin: 8px 0 4px; padding: 2px 14px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 15px;
+}
+.date-pill.unknown { background: #eceff4; color: var(--muted); font-weight: 600; }
+
+.chips { list-style: none; padding: 0; margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: flex; flex-direction: column; padding: 8px 14px; border-radius: 12px;
+  background: var(--accent-soft); min-width: 0;
+}
+.chip-value { font-size: 20px; font-weight: 800; color: var(--accent); line-height: 1.2; overflow-wrap: anywhere; }
+.chip-name  { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+.card-base, .p-card, .t-card, .tile, .chart {
+  background: var(--card); border-radius: 20px; padding: 24px 26px;
+  box-shadow: 0 2px 12px rgba(27,35,51,.07);
+}
+
+/* ---------- process ---------- */
+.p-row { display: flex; align-items: stretch; justify-content: flex-start; }
+.p-card {
+  position: relative; flex: 0 0 calc((100% - (var(--cols) - 1) * 52px) / var(--cols));
+  padding-top: 40px;
+  background: linear-gradient(var(--accent), var(--accent)) top / 100% 6px no-repeat, var(--card);
+}
+.p-num {
+  position: absolute; top: -22px; inset-inline-start: 22px; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+  font-size: 20px; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,.18);
+}
+.p-card h2 { margin-top: 6px; }
+.p-card p  { margin-top: 8px; font-size: 17px; }
+.p-arrow { flex: 0 0 52px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.p-down  { display: flex; justify-content: center; padding: 14px 0; color: var(--accent); }
+.arrow-down { transform: rotate(90deg); }
+[dir="rtl"] .arrow-right { transform: scaleX(-1); }
+
+/* ---------- timeline ---------- */
+.timeline { position: relative; }
+.t-row { display: grid; grid-template-columns: 1fr 64px 1fr; position: relative; padding-block: 12px; }
+.t-row::before {                      /* the vertical axis */
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 50%;
+  width: 4px; margin-inline-start: -2px; background: var(--accent);
+}
+.t-row:first-child::before { top: 36px; }
+.t-row:last-child::before  { bottom: calc(100% - 52px); }
+.t-dot {
+  grid-column: 2; grid-row: 1; justify-self: center; align-self: start; margin-top: 24px;
+  width: 26px; height: 26px; border-radius: 50%; background: var(--card);
+  border: 6px solid var(--accent); position: relative; z-index: 1;
+}
+.t-start .t-card { grid-column: 1; grid-row: 1; margin-inline-end: 12px; }
+.t-end   .t-card { grid-column: 3; grid-row: 1; margin-inline-start: 12px; }
+.t-card p { margin-top: 6px; font-size: 17px; }
+
+/* ---------- comparison ---------- */
+.matrix {
+  display: grid; grid-template-columns: 200px repeat(var(--cols), minmax(0, 1fr));
+  background: var(--card); border-radius: 22px; overflow: hidden;
+  box-shadow: 0 2px 12px rgba(27,35,51,.07);
+}
+.m-corner { background: var(--card); }
+.m-head {
+  padding: 24px 22px; text-align: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-inline-start: 1px solid rgba(255,255,255,.25);
+}
+.m-head h2 { font-size: 22px; }
+.m-head .refs { color: #fff; opacity: .85; }
+.m-head p { margin-top: 8px; font-size: 15px; color: rgba(255,255,255,.9); }
+.m-head .date-pill { background: rgba(255,255,255,.22); color: #fff; }
+.m-label, .m-cell { padding: 16px 20px; border-top: 1px solid var(--line); display: flex; align-items: center; }
+.m-label { font-weight: 700; color: var(--muted); font-size: 16px; }
+.m-cell  { justify-content: center; text-align: center; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.m-cell.missing { color: #b4bccb; font-weight: 400; }
+.z { background: #f8f9fc; }
+.note { margin-top: 14px; font-size: 14px; color: var(--muted); }
+
+/* ---------- statistics ---------- */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 24px; }
+.chart h3 { font-size: 20px; margin-bottom: 18px; }
+.chart h3 small { font-weight: 500; color: var(--muted); font-size: 15px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 100px; gap: 14px; align-items: center; margin-block: 12px; }
+.bar-label { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
+.bar-track { height: 22px; border-radius: 999px; background: var(--accent-soft); overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 999px; background: var(--accent); }
+.bar-value { font-weight: 800; font-size: 18px; text-align: end; color: var(--accent); }
+.tiles { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.tile { padding-top: 30px; background: linear-gradient(var(--accent), var(--accent)) top / 100% 6px no-repeat, var(--card); }
+.tile p { margin-top: 6px; font-size: 17px; }
+
+/* ---------- footer ---------- */
+.sources { margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--line); font-size: 14px; color: var(--muted); }
+.sources h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px; }
+.sources ul { list-style: none; padding: 0; columns: 2; column-gap: 32px; }
+.sources li { break-inside: avoid; margin-bottom: 6px; }
+.src-nums { color: var(--accent); font-weight: 700; margin-inline-end: 8px; overflow-wrap: anywhere; }
+.brand { margin-top: 24px; text-align: center; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #9aa5b8; }
+</style>
+</head>
+<body>
+<div id="infographic" class="kind-process" style="--width: 1200px;">
+
+  <header class="banner">
+    <span class="badge">Process</span>
+    <h1>An Intentionally Very Long Infographic Title That Must Wrap Across Several Lines Without Breaking The Banner</h1>
+  </header>
+
+  <section class="summary">A short summary line.</section>
+
+  <main>
+<div class="process">
+  <div class="p-row" style="--cols: 3;">
+    <article class="p-card">
+      <div class="p-num">1</div>
+      <h2>Step 1</h2>
+<p>This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy.</p>      
+    </article>
+<div class="p-arrow"><svg class="arrow arrow-right" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>    <article class="p-card">
+      <div class="p-num">2</div>
+      <h2>Step 2</h2>
+      <ul class="chips">
+  <li class="chip"><span class="chip-value">1,234,567.891 items/s</span><span class="chip-name">Throughput</span></li>
+</ul>
+
+    </article>
+<div class="p-arrow"><svg class="arrow arrow-right" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>    <article class="p-card">
+      <div class="p-num">3</div>
+      <h2>Step 3: Extraordinarily_long_unbroken_identifier_3</h2>
+<p>This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy.</p>      
+    </article>
+  </div>
+<div class="p-down"><svg class="arrow arrow-down" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>  <div class="p-row" style="--cols: 3;">
+    <article class="p-card">
+      <div class="p-num">4</div>
+      <h2>Step 4</h2>
+      
+    </article>
+<div class="p-arrow"><svg class="arrow arrow-right" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>    <article class="p-card">
+      <div class="p-num">5</div>
+      <h2>Step 5</h2>
+<p>This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy.</p>      
+    </article>
+<div class="p-arrow"><svg class="arrow arrow-right" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>    <article class="p-card">
+      <div class="p-num">6</div>
+      <h2>Step 6: Extraordinarily_long_unbroken_identifier_6</h2>
+      
+    </article>
+  </div>
+<div class="p-down"><svg class="arrow arrow-down" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>  <div class="p-row" style="--cols: 3;">
+    <article class="p-card">
+      <div class="p-num">7</div>
+      <h2>Step 7</h2>
+<p>This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy. This description is intentionally long so we can verify wrapping, card heights and spacing stay tidy.</p>      
+    </article>
+<div class="p-arrow"><svg class="arrow arrow-right" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>    <article class="p-card">
+      <div class="p-num">8</div>
+      <h2>Step 8</h2>
+      
+    </article>
+  </div>
+</div>
+  </main>
+
+
+  <div class="brand">Local Smart Notebook</div>
+</div>
+</body>
+</html>

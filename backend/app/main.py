@@ -11,6 +11,13 @@ from app.core.logging import setup_logging
 from app.database import models  # noqa: F401  (registers the tables for Alembic)
 from app.services import file_storage
 
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(
+        asyncio.WindowsProactorEventLoopPolicy()
+    )
 # NOTE: the tables are created with Alembic ("alembic upgrade head"), not with
 # Base.metadata.create_all(). Mixing the two makes Alembic fail with "table already exists".
 
