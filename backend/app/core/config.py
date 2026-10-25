@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return int(self.max_upload_mb * 1024 * 1024)
+    # --- presentations (Task 3) ---
+    max_presentation_slides: int = 20
+ 
+    @property
+    def artifacts_dir(self) -> Path:
+        return self.data_dir / "artifacts"      # data/artifacts
+
 
 
 settings = Settings()
