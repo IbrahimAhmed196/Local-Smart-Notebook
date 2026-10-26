@@ -83,3 +83,67 @@ def make_notebook(client):
 @pytest.fixture()
 def notebook_id(make_notebook, auth):
     return make_notebook(auth)
+
+@pytest.fixture()
+def sample_deck():
+    """Load the existing sample containing all five public layouts."""
+    from pathlib import Path
+
+    from app.schemas.slide_content import PresentationContent
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "samples"
+        / "sample_deck.json"
+    )
+    return PresentationContent.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+
+@pytest.fixture()
+def fake_generator(monkeypatch, sample_deck):
+    """Replace AI generation while keeping the real service and renderer."""
+    from app.services import presentation_service as service
+
+    class FakeDeckGenerator:
+        def __init__(self):
+            self.calls = []
+            self.error = None
+
+        def generate(self, *, notebook, options, documents, progress):
+            self.calls.append({
+                "notebook_id": notebook.id,
+                "options": options,
+                "document_ids": [document.id for document in documents],
+            })
+
+            progress("outline")
+
+            if self.error is not None:
+                raise self.error
+
+            progress("content 5/5")
+            return sample_deck.model_copy(deep=True)
+
+    generator = FakeDeckGenerator()
+    monkeypatch.setattr(service, "get_generator", lambda: generator)
+    return generator
+
+@pytest.fixture()
+def scripted_llm():
+    """Factory for scripted clients, with call-count checks at teardown."""
+    from tests.fake_llm import ScriptedLLMClient
+
+    clients = []
+
+    def make(*responses):
+        client = ScriptedLLMClient(*responses)
+        clients.append(client)
+        return client
+
+    yield make
+
+    for client in clients:
+        client.assert_finished()

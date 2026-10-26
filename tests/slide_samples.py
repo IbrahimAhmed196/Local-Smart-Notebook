@@ -11,6 +11,7 @@ from typing import Callable, Dict, List
 from app.schemas.slide_content import Bullet, ChartSpec, SlideContentDraft, SourceChunk, TableSpec
 from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 from app.tools.chart_tool import DataSource
+from tests.fake_llm import ScriptedLLMClient as FakeClient
 
 SAMPLES_DIR = Path(__file__).resolve().parents[1] / "docs" / "samples"
 SALES_CSV = SAMPLES_DIR / "sample_sales.csv"
@@ -57,31 +58,6 @@ def mock_chunks(slide_number: int) -> List[SourceChunk]:
 
 def sales_source() -> DataSource:
     return DataSource(document_id=SALES_DOCUMENT_ID, filename="sample_sales.csv", path=SALES_CSV)
-
-
-class FakeClient:
-    """Stands in for OllamaJSONClient: returns prepared drafts and records every call."""
-
-    def __init__(self, responder: Callable[[str], SlideContentDraft]):
-        self.responder = responder
-        self.calls: List[dict] = []
-
-    @classmethod
-    def sequence(cls, *items) -> "FakeClient":
-        """Answer the 1st call with items[0], the 2nd with items[1] ... (an Exception is raised)."""
-        queue = list(items)
-
-        def respond(_prompt: str):
-            item = queue.pop(0)
-            if isinstance(item, Exception):
-                raise item
-            return item
-
-        return cls(respond)
-
-    def generate_json(self, prompt, response_schema, **kwargs):
-        self.calls.append({"prompt": prompt, "schema": response_schema, **kwargs})
-        return self.responder(prompt)
 
 
 def slide_number_of(prompt: str) -> int:
@@ -135,21 +111,30 @@ def sample_drafts() -> Dict[int, SlideContentDraft]:
 
 def sample_client() -> FakeClient:
     drafts = sample_drafts()
-    return FakeClient(lambda prompt: drafts[slide_number_of(prompt)])
+    return FakeClient.sequence(
+        *(drafts[number] for number in sorted(drafts))
+    )
 
 
 def build_sample_deck():
     from app.agents.slide_content_agent import generate_presentation_content
 
     outline = mock_outline()
-    by_number = {s.slide_number: s for s in outline.slides}
-    return outline, generate_presentation_content(
+    by_number = {slide.slide_number: slide for slide in outline.slides}
+    client = sample_client()
+
+    deck = generate_presentation_content(
         outline,
-        chunks_for_slide=lambda item: mock_chunks(by_number[item.slide_number].slide_number),
+        chunks_for_slide=lambda item: mock_chunks(
+            by_number[item.slide_number].slide_number
+        ),
         data_files=[sales_source()],
         style="professional",
-        client=sample_client(),
+        client=client,
     )
+
+    client.assert_finished()
+    return outline, deck
 
 
 if __name__ == "__main__":
