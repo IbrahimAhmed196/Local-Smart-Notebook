@@ -35,6 +35,7 @@ from tests.slide_samples import (
     sales_source,
     slide_number_of,
 )
+from requests.exceptions import Timeout
 
 
 def item(layout="bullet_points", number=2, title="Key Findings", purpose="Summarise the results"):
@@ -82,16 +83,24 @@ def test_bullet_slide_keeps_the_text_and_turns_aliases_into_real_chunk_ids():
     assert call["temperature"] == TEMPERATURE == 0.1 and call["num_ctx"] == NUM_CTX
 
 
-def test_a_cited_id_that_does_not_exist_makes_the_agent_ask_once_more():
-    client = FakeClient.sequence(draft(("Wrong", ["S9"])), draft(("Right", ["S1"])))
+def test_a_cited_id_that_does_not_exist_makes_the_agent_ask_once_more(
+    scripted_llm,
+):
+    client = scripted_llm(
+        draft(("Wrong", ["S9"])),
+        draft(("Right", ["S1"])),
+    )
+
     slide = write(item(), client)
 
     assert len(client.calls) == 2
-    assert "CORRECTION" in client.calls[1]["prompt"] and "S9" in client.calls[1]["prompt"]
     assert "CORRECTION" not in client.calls[0]["prompt"]
-    assert [b.text for b in slide.bullets] == ["Right"]
-    assert slide.bullets[0].source_ids == ["doc2-s2-a"] and slide.warnings == []
+    assert "CORRECTION" in client.calls[1]["prompt"]
+    assert "S9" in client.calls[1]["prompt"]
 
+    assert [bullet.text for bullet in slide.bullets] == ["Right"]
+    assert slide.bullets[0].source_ids == ["doc2-s2-a"]
+    assert slide.warnings == []
 
 def test_ids_that_are_still_invalid_after_the_retry_are_removed_and_reported():
     client = FakeClient.sequence(draft(("A", ["S9", "S1"])), draft(("B", ["S9", "S1"])))
@@ -202,12 +211,28 @@ def test_a_chart_slide_without_any_chart_choice_falls_back_to_bullets():
 
 
 @pytest.mark.parametrize("layout", ["chart", "table"])
-def test_a_data_slide_without_a_spreadsheet_never_asks_for_a_chart(layout):
+def test_a_data_slide_without_a_spreadsheet_falls_back_to_bullets(layout):
     client = FakeClient.sequence(draft(("x", ["S1"])))
+
     slide = write(item(layout, 4), client, data_files=[])
+
     assert slide.layout_type == "bullet_points"
-    assert "DATA FILES" not in client.calls[0]["prompt"] and "LAYOUT: bullet_points" in client.calls[0]["prompt"]
-    assert any("No spreadsheet" in w for w in slide.warnings)
+    assert slide.chart is None
+    assert slide.table is None
+
+    prompt = client.calls[0]["prompt"]
+    lines = prompt.splitlines()
+
+    assert "LAYOUT: bullet_points" in lines
+
+    # General instructions may mention DATA FILES,
+    # but no spreadsheet catalog should be included.
+    assert not any(
+        line.startswith("DATA FILES (spreadsheets you may use")
+        for line in lines
+    )
+
+    assert any("No spreadsheet" in warning for warning in slide.warnings)
 
 
 def test_table_cells_come_from_the_file():
@@ -246,43 +271,102 @@ def test_if_the_retry_fails_the_first_draft_is_kept():
 
 # ---------------------------------------------------------------- the whole deck
 
-def test_the_deck_is_written_one_slide_at_a_time_in_slide_order_with_only_that_slides_sources():
+def test_the_deck_is_written_one_slide_at_a_time_in_slide_order_with_only_that_slides_sources(
+    scripted_llm,
+):
     outline = mock_outline()
-    outline.slides.reverse()  # the agent must not depend on the order it is given
-    marks = {n: f"UNIQUE-TEXT-FOR-SLIDE-{n}" for n in range(1, 6)}
+    outline.slides.reverse()
 
-    def chunks_for(it):
-        return [SourceChunk(chunk_id=f"c{it.slide_number}", document_id=2, filename="r.pdf", text=marks[it.slide_number])]
+    marks = {
+        number: f"UNIQUE-TEXT-FOR-SLIDE-{number}"
+        for number in range(1, 6)
+    }
 
-    seen = []
-    client = FakeClient(lambda prompt: (seen.append(slide_number_of(prompt)), draft(("x", ["S1"])))[1])
+    def chunks_for(slide):
+        return [
+            SourceChunk(
+                chunk_id=f"c{slide.slide_number}",
+                document_id=2,
+                filename="r.pdf",
+                text=marks[slide.slide_number],
+            )
+        ]
+
+    client = scripted_llm(
+        *(draft(("x", ["S1"])) for _ in range(5))
+    )
     progress = []
+
     deck = generate_presentation_content(
-        outline, chunks_for_slide=chunks_for, data_files=[sales_source()], client=client,
+        outline,
+        chunks_for_slide=chunks_for,
+        data_files=[sales_source()],
+        client=client,
         on_progress=lambda done, total: progress.append((done, total)),
     )
 
-    assert seen == [1, 2, 3, 4, 5] and len(client.calls) == 5
-    assert [s.slide_number for s in deck.slides] == [1, 2, 3, 4, 5]
+    assert [
+        slide_number_of(call["prompt"]) for call in client.calls
+    ] == [1, 2, 3, 4, 5]
+
+    assert [slide.slide_number for slide in deck.slides] == [1, 2, 3, 4, 5]
     assert progress == [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5)]
+
     for call in client.calls:
-        n = slide_number_of(call["prompt"])
-        assert marks[n] in call["prompt"]
-        assert all(marks[o] not in call["prompt"] for o in marks if o != n)
-    assert deck.presentation_title == "Sales Review 2025" and deck.target_audience == "Management team"
+        number = slide_number_of(call["prompt"])
+        assert marks[number] in call["prompt"]
+        assert all(
+            marks[other] not in call["prompt"]
+            for other in marks
+            if other != number
+        )
+
+    assert deck.presentation_title == "Sales Review 2025"
+    assert deck.target_audience == "Management team"
 
 
-def test_one_failed_slide_does_not_lose_the_deck():
-    def respond(prompt):
-        if slide_number_of(prompt) == 3:
-            raise RuntimeError("bad json")
-        return draft(("x", ["S1"]))
+def test_one_failed_slide_does_not_lose_the_deck(scripted_llm):
+    client = scripted_llm(
+        # Slide 1 has no sources: return a title draft without citations.
+        SlideContentDraft(
+            subtitle="Sales overview",
+            speaker_notes="Welcome.",
+        ),
+        draft(("x", ["S1"])),       # Slide 2
+        RuntimeError("bad json"),  # Slide 3
+        draft(("x", ["S1"])),       # Slide 4
+        draft(("x", ["S1"])),       # Slide 5
+    )
 
-    deck = generate_presentation_content(mock_outline(), chunks_for_slide=lambda i: mock_chunks(i.slide_number), client=FakeClient(respond))
+    deck = generate_presentation_content(
+        mock_outline(),
+        chunks_for_slide=lambda slide: mock_chunks(slide.slide_number),
+        client=client,
+    )
+
     assert len(deck.slides) == 5
-    assert any("bad json" in w for w in deck.slides[2].warnings)
-    assert deck.slides[1].warnings == [] or all("failed" not in w for w in deck.slides[1].warnings)
 
+    # Exactly one call per slide, with no unexpected citation retries.
+    assert [
+        slide_number_of(call["prompt"])
+        for call in client.calls
+    ] == [1, 2, 3, 4, 5]
+
+    assert any(
+        "bad json" in warning
+        for warning in deck.slides[2].warnings
+    )
+    assert any(
+        "placeholder slide" in warning
+        for warning in deck.slides[2].warnings
+    )
+
+    # The other slides must survive without model-call failures.
+    for index in (0, 1, 3, 4):
+        assert all(
+            "model call failed" not in warning
+            for warning in deck.slides[index].warnings
+        )
 
 def test_the_finished_deck_is_valid_json_that_round_trips():
     _, deck = build_sample_deck()
@@ -401,3 +485,30 @@ def test_client_error_message_keeps_the_real_reason(monkeypatch):
         assert "Last error:" in str(exc) and "JSONDecodeError" in str(exc)
     else:
         raise AssertionError("expected RuntimeError")
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        "this is not JSON",
+        '{"bullets": [{"text": 123}]}',
+        Timeout("Model timed out"),
+    ],
+    ids=["invalid-json", "invalid-schema", "timeout"],
+)
+def test_scripted_llm_failures_produce_placeholder_slides(
+    scripted_llm, response
+):
+    client = scripted_llm(response)
+
+    slide = write(
+        item(purpose="Summarise the results"),
+        client,
+    )
+
+    assert len(client.calls) == 1
+    assert slide.layout_type == "bullet_points"
+    assert slide.bullets == [Bullet(text="Summarise the results")]
+    assert any(
+        "placeholder slide" in warning
+        for warning in slide.warnings
+    )

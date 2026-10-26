@@ -71,9 +71,7 @@ def ensure_llm_ready(client) -> None:
     """Fail at once, with a readable message, if Ollama or the model is missing.
  
     Without this check Task 2's writer would turn every slide into a placeholder."""
-    base_url = getattr(client, "base_url", None)
-    if not base_url:  # a fake client in tests
-        return
+    base_url = client.base_url
     try:
         reply = requests.get(f"{base_url}/api/tags", timeout=3)
         reply.raise_for_status()
