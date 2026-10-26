@@ -6,6 +6,7 @@ from app.database.models import Notebook, Presentation, PresentationStatus
 from app.schemas.presentations import PresentationCreate
 from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 from app.services import presentation_service as service
+from app.presentations.outline import clean_outline
 
 
 @pytest.fixture()
@@ -234,7 +235,7 @@ def test_clean_outline_repairs_numbering_layouts_and_title(
         "include_sources_slide": include_sources,
     }
 
-    cleaned = service.clean_outline(outline, options, has_data)
+    cleaned = clean_outline(outline, options, has_data)
 
     assert cleaned.presentation_title == "User title"
     assert cleaned.target_audience == "Managers"
@@ -272,4 +273,4 @@ def test_clean_outline_rejects_empty_or_short_outlines(count, message):
     }
 
     with pytest.raises(ValueError, match=message):
-        service.clean_outline(outline, options, has_data=False)
+        clean_outline(outline, options, has_data=False)

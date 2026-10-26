@@ -24,11 +24,11 @@ from app.database.models import Document, Notebook, Presentation, PresentationSt
 from app.jobs.manager import job_manager
 from app.llm.ollama_client import OllamaJSONClient
 from app.schemas.presentations import PresentationCreate
-from app.schemas.slide_content import SLIDE_LAYOUTS, PresentationContent
-from app.schemas.slides import PresentationOutlineResponse
+from app.schemas.slide_content import PresentationContent
 from app.services import presentation_context
 from app.tools.chart_tool import sources_from_documents
 from app.tools.pptx_tool import build_pptx
+from app.presentations.outline import generate_outline
  
 log = logging.getLogger(__name__)
  
@@ -38,33 +38,7 @@ class LlmUnavailableError(RuntimeError):
  
  
 # ------------------------------------------------------------------ the AI chain
-OUTLINE_PROMPT = """Create the outline of a presentation.
- 
-TOPIC: {topic}
-NUMBER OF SLIDES: exactly {count}
-AUDIENCE: {audience}
-STYLE: {style}
- 
-RULES:
-- slide_number goes from 1 to {count}. Slide 1 has layout_type "title".
-- layout_type must be one of: {layouts}.
-- Every slide has a short title and a one-sentence purpose that says what the slide must show.
-- Follow a logical order: introduction, the main points, then a closing slide.
-- Write in the same language as the DOCUMENT EXCERPTS.
-- Preserve explicit user requirements in each relevant slide's purpose.
-- For a requested chart, the purpose must specify its chart type, categories, measure, and aggregation.
-- For a requested table, the purpose must specify the requested columns and record count.
-- Use layout_type "chart" for charts; record bar, line, or pie in the purpose.
-- Give each slide a distinct purpose. Avoid repeating the same findings across slides.
-- Do not add a Q&A slide unless the user requests one.
-- The requested outline count already excludes the separately rendered Sources slide. Do not create a Sources slide.
-- Include exactly one concluding slide, as the last outline slide.
-- Do not add separate Closing Remarks, Summary, Thank You, or Q&A slides that repeat the conclusion.
-- Give every slide a distinct purpose.
-{data_note}
-DOCUMENT EXCERPTS:
-{excerpts}
-"""
+
  
  
 def ensure_llm_ready(client) -> None:
@@ -86,67 +60,7 @@ def ensure_llm_ready(client) -> None:
             f"The model '{wanted}' is not installed. Run: ollama pull {wanted}"
         )
  
- 
-def _make_outline(
-    client, options: dict, chunks, data_names: list[str]
-) -> PresentationOutlineResponse:
-    """Task 1's outline step. Replace the body with Task 1's own function when it exists."""
-    layouts = [l for l in SLIDE_LAYOUTS if data_names or l not in ("chart", "table")]
-    if data_names:
-        data_note = (
-            f"- Use chart or table only to show numbers from: {', '.join(data_names)}."
-        )
-    else:
-        data_note = "- There are no spreadsheets, so do not use chart or table."
-    excerpts = (
-        "\n".join(
-            f"- ({c.filename}{f', page {c.page}' if c.page else ''}) {c.text[:300]}"
-            for c in chunks[:6]
-        )
-        or "(No document text was found. Use the topic only.)"
-    )
-    prompt = OUTLINE_PROMPT.format(
-        topic=options["topic"],
-        count=_outline_slide_count(options),
-        audience=options["audience"],
-        style=options["style"],
-        layouts=", ".join(layouts),
-        data_note=data_note,
-        excerpts=excerpts,
-    )
-    outline = client.generate_json(
-        prompt, PresentationOutlineResponse, temperature=0.3, num_ctx=8192
-    )
-    return clean_outline(outline, options, has_data=bool(data_names))
- 
- 
-def clean_outline(outline: PresentationOutlineResponse, options: dict, has_data: bool):
-    """Deterministic repairs: right number of slides, numbered 1..n, a title slide first,
-    and no chart/table when there is no spreadsheet to draw it from."""
-    expected = _outline_slide_count(options)
-    slides = sorted(outline.slides, key=lambda s: s.slide_number)[:expected]
-    if not slides:
-        raise ValueError("The model returned an outline without any slides.")
-    if len(slides) != expected:
-        raise ValueError(f"Expected {expected} outline slides, received {len(slides)}.")
-    fixed = []
-    for number, slide in enumerate(slides, start=1):
-        layout = (slide.layout_type or "").strip().lower().replace(" ", "_")
-        if number == 1:
-            layout = "title"
-        elif layout in ("chart", "table") and not has_data:
-            layout = "bullet_points"
-        updates = {"slide_number": number, "layout_type": layout}
-        if number == 1:
-            updates["title"] = options.get("title") or outline.presentation_title
-        fixed.append(slide.model_copy(update=updates))
-    return PresentationOutlineResponse(
-        presentation_title=options.get("title") or outline.presentation_title,
-        target_audience=outline.target_audience or options["audience"],
-        slides=fixed,
-    )
- 
- 
+
 class DeckGenerator(Protocol):
     def generate(
         self,
@@ -172,9 +86,7 @@ class LocalLlmDeckGenerator:
         chunks = presentation_context.build_chunks(documents)
         data_files = sources_from_documents(documents)
         progress("outline")
-        outline = _make_outline(
-            self.client, options, chunks, [d.filename for d in data_files]
-        )
+        outline = generate_outline(self.client, options, chunks, [d.filename for d in data_files])
         total = len(outline.slides)
         progress(f"content 0/{total}")
         return generate_presentation_content(
@@ -226,13 +138,6 @@ def _render(p: Presentation, deck: PresentationContent) -> str:
     )
     return relative
  
-def _outline_slide_count(options: dict) -> int:
-    total = int(options["num_slides"])
-    reserved = 1 if options.get("include_sources_slide", True) else 0
-    count = total - reserved
-    if count < 2:
-        raise ValueError("Allow at least two content slides plus the optional Sources slide.")
-    return count
 # ------------------------------------------------------------------ use cases
 def create_presentation(
     db: Session, notebook: Notebook, data: PresentationCreate

@@ -6,6 +6,7 @@ from app.schemas.presentations import PresentationCreate
 from app.schemas.slide_content import SlideContentDraft
 from app.schemas.slides import PresentationOutlineResponse
 from app.services import presentation_service as service
+from app.presentations.outline import generate_outline
 
 
 def outline_response():
@@ -38,7 +39,7 @@ def test_outline_uses_scripted_client_and_cleans_response(scripted_llm):
         include_sources_slide=True,
     ).model_dump()
 
-    outline = service._make_outline(
+    outline = generate_outline(
         client,
         options,
         chunks=[],
@@ -63,7 +64,7 @@ def test_invalid_outline_schema_is_rejected(scripted_llm):
     options = PresentationCreate(topic="Sales review").model_dump()
 
     with pytest.raises(RuntimeError, match="ValidationError"):
-        service._make_outline(
+        generate_outline(
             client,
             options,
             chunks=[],
