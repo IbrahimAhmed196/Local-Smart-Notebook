@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Type
 
 class OllamaJSONClient:
-    def __init__(self, model_name: str = "qwen2.5:7b-instruct", base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "qwen2.5:3b", base_url: str = "http://localhost:11434"):
         self.model_name = model_name
         self.base_url = base_url
 
@@ -52,3 +52,70 @@ class OllamaJSONClient:
             f"Last error: {type(last_error).__name__}: {str(last_error)[:600]}"
         )
 
+
+
+class OllamaChatClient:
+    """Plain-text chat with the local Ollama model (used by the notebook chat).
+
+    `messages` is the usual list of {"role": "system" | "user" | "assistant", "content": str}.
+    Raises LlmChatError with a readable message when Ollama or the model is not available.
+    """
+
+    def __init__(
+        self,
+        model_name: str = "qwen2.5:3b",
+        base_url: str = "http://localhost:11434",
+        timeout: float = 180,
+    ):
+        self.model_name = model_name
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+
+    def chat(
+        self,
+        messages: list[dict],
+        temperature: float = 0.3,
+        num_ctx: int | None = None,
+    ) -> str:
+        options: dict = {"temperature": temperature}
+        if num_ctx:
+            options["num_ctx"] = num_ctx
+        payload = {
+            "model": self.model_name,
+            "messages": messages,
+            "stream": False,
+            "options": options,
+        }
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat", json=payload, timeout=self.timeout
+            )
+        except requests.ConnectionError:
+            raise LlmChatError(
+                f"Cannot reach Ollama at {self.base_url}. Start it with: ollama serve"
+            )
+        except requests.Timeout:
+            raise LlmChatError("The AI model took too long to answer. Please try again.")
+        except requests.RequestException as exc:
+            raise LlmChatError(f"Could not call the AI model: {exc}")
+
+        if response.status_code == 404:
+            raise LlmChatError(
+                f"The model '{self.model_name}' is not installed. "
+                f"Run: ollama pull {self.model_name}"
+            )
+        if not response.ok:
+            raise LlmChatError(f"The AI model returned an error ({response.status_code}).")
+
+        try:
+            answer = (response.json().get("message") or {}).get("content", "")
+        except ValueError:
+            raise LlmChatError("The AI model returned an unreadable answer.")
+        answer = answer.strip()
+        if not answer:
+            raise LlmChatError("The AI model returned an empty answer.")
+        return answer
+
+
+class LlmChatError(RuntimeError):
+    """The chat model could not answer (Ollama down, model missing, timeout ...)."""

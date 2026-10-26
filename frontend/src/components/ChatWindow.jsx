@@ -67,9 +67,7 @@ export default function ChatWindow({ notebook, conversation, messages, loading, 
             onUpload={onUpload} uploading={uploading} accept={accept}
             placeholder={notebook ? 'Write a message… (Enter to send)' : 'Select a notebook first'} />
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] text-mauve-200">
-              Messages are saved by the backend. No AI answer is generated: this chat only tests the API.
-            </p>
+           
             {notebook && (
               <button type="button" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen}
                 className="shrink-0 rounded-md border border-mauve-700 px-2 py-1 text-xs font-medium text-mauve-100 hover:border-mauve-300 hover:bg-mauve-800">

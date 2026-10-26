@@ -6,7 +6,7 @@
 //   POST/GET /documents, GET /documents/supported-types,
 //   GET/PATCH/DELETE /documents/{id}, GET /documents/{id}/download
 //   POST/GET /conversations, GET/PATCH/DELETE /conversations/{id},
-//   POST/GET /conversations/{id}/messages
+//   POST/GET /conversations/{id}/messages, POST /conversations/{id}/ask (AI answer)
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 const TOKEN_KEY = 'lsn_token'
@@ -174,3 +174,8 @@ export const deleteConversation = (id) => request(`/conversations/${id}`, { meth
 export const listMessages = (id) => request(`/conversations/${id}/messages?limit=200`)
 export const sendMessage = (id, content) =>
   request(`/conversations/${id}/messages`, { method: 'POST', json: { content } })
+// Stores the question AND asks the AI model (it sees this chat's history and the notebook's
+// uploaded files). Resolves to {user_message, assistant_message | null, error | null, sources: [filenames]}.
+// If the model is down, the question is still stored and `error` explains why.
+export const askAi = (id, content) =>
+  request(`/conversations/${id}/ask`, { method: 'POST', json: { content } })

@@ -166,11 +166,14 @@ export default function App() {
     setSidebarOpen(false)
   }
 
-  // Resolves to true if the backend stored the message (the input clears only then).
+  // Sends the question to the AI and shows its answer in the chat.
+  // Resolves to true if the backend stored the question (the input is restored otherwise).
   const send = async (text) => {
     if (sending || activeId == null) return false
     setSending(true)
     setChatError('')
+    const tempId = `pending-${Date.now()}`
+    let shown = false
     try {
       let conv = activeConv
       if (!conv) {
@@ -179,10 +182,19 @@ export default function App() {
         setConversations((l) => [conv, ...l])
         setActiveConv(conv)
       }
-      const msg = await api.sendMessage(conv.id, text)
-      setMessages((m) => [...m, msg])
+      // show the question at once; the answer can take a while on a local model
+      setMessages((m) => [...m, { id: tempId, sender: 'user', content: text, timestamp: new Date().toISOString(), pending: true }])
+      shown = true
+      const res = await api.askAi(conv.id, text)
+      setMessages((m) => {
+        const next = m.map((x) => (x.id === tempId ? res.user_message : x))
+        if (res.assistant_message) next.push({ ...res.assistant_message, sources: res.sources })
+        return next
+      })
+      if (res.error) setChatError(res.error)
       return true
     } catch (err) {
+      if (shown) setMessages((m) => m.filter((x) => x.id !== tempId))
       setChatError(err.message)
       return false
     } finally {

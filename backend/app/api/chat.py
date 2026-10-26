@@ -6,6 +6,7 @@ from app.api.deps import get_current_user, get_owned_conversation
 from app.database.database import get_db
 from app.database.models import Conversation, User
 from app.schemas.chat import (
+    AskResponse,
     ConversationCreate,
     ConversationHistory,
     ConversationResponse,
@@ -97,3 +98,19 @@ def get_messages(
 ):
     response.headers["X-Total-Count"] = str(chat_service.count_messages(db, conversation))
     return chat_service.get_history(db, conversation, limit, offset)
+
+@router.post("/{conversation_id}/ask", response_model=AskResponse)
+def ask_ai(
+    data: MessageCreate,
+    conversation: Conversation = Depends(get_owned_conversation),
+    db: Session = Depends(get_db),
+):
+    """Save the user's message, ask the AI (using this chat's history and the notebook's
+    uploaded files) and save its answer. Returns both messages."""
+    exchange = chat_service.ask(db, conversation, data.content)
+    return AskResponse(
+        user_message=exchange.user_message,
+        assistant_message=exchange.assistant_message,
+        error=exchange.error,
+        sources=exchange.sources or [],
+    )

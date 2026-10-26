@@ -18,7 +18,7 @@ export default function AuthForm({ onLogin, onRegister, busy, error }) {
       <form onSubmit={submit} className="w-full max-w-sm bg-mauve-950 border border-mauve-800 rounded-xl p-6 space-y-4">
         <div>
           <h1 className="text-lg font-semibold"><span className="text-mauve-300">●</span> Local Smart Notebook</h1>
-          <p className="text-sm text-mauve-200">API test UI. {mode === 'login' ? 'Sign in' : 'Create an account'} to continue.</p>
+         
         </div>
         <label className="block text-sm">
           <span className="text-mauve-200">Email</span>

@@ -62,3 +62,15 @@ class MessageResponse(BaseModel):
 class ConversationHistory(BaseModel):
     conversation: ConversationResponse
     messages: list[MessageResponse]
+
+
+class AskResponse(BaseModel):
+    """Result of asking the AI a question in a conversation.
+
+    `assistant_message` is None when the model could not answer; `error` then says why.
+    The user's message is stored in both cases."""
+
+    user_message: MessageResponse
+    assistant_message: MessageResponse | None = None
+    error: str | None = None
+    sources: list[str] = Field(default_factory=list)  # files the answer was based on

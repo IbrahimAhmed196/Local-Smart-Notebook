@@ -52,6 +52,21 @@ class Settings(BaseSettings):
         return int(self.max_upload_mb * 1024 * 1024)
     # --- presentations (Task 3) ---
     max_presentation_slides: int = 20
+
+    # --- chat answers (Ollama) ---
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        validation_alias=AliasChoices("OLLAMA_BASE_URL", "LSN_OLLAMA_URL"),
+    )
+    chat_model: str = Field(
+        default="qwen2.5:3b",
+        validation_alias=AliasChoices("CHAT_MODEL", "LSN_CHAT_MODEL"),
+    )
+    chat_temperature: float = 0.3
+    chat_num_ctx: int = 8192             # context window asked from Ollama
+    chat_timeout_seconds: float = 180    # a small local model can be slow on CPU
+    chat_history_messages: int = 12      # how many earlier messages the model sees
+    chat_context_chars: int = 6000       # how much document text is put in the prompt
  
     @property
     def artifacts_dir(self) -> Path:
