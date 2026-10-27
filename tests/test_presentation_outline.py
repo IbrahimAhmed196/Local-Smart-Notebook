@@ -71,19 +71,8 @@ def test_invalid_outline_schema_is_rejected(scripted_llm):
             data_names=[],
         )
 
-
-def test_generator_uses_one_client_for_outline_and_slide_content(
-    scripted_llm, monkeypatch
-):
-    def unexpected_readiness_check(_client):
-        pytest.fail("Readiness check should be explicitly disabled.")
-
-    monkeypatch.setattr(
-        service,
-        "ensure_llm_ready",
-        unexpected_readiness_check,
-    )
-
+@pytest.mark.parametrize("check_ready", [True, False])
+def test_generator_uses_one_client_for_outline_and_slide_content(scripted_llm, check_ready):
     client = scripted_llm(
         outline_response(),
         '{"subtitle": "Sales overview", "speaker_notes": "Welcome."}',
@@ -92,38 +81,23 @@ def test_generator_uses_one_client_for_outline_and_slide_content(
             "speaker_notes": "Discuss the findings.",
         },
     )
-
-    generator = service.LocalLlmDeckGenerator(
-        client=client,
-        check_ready=False,
-    )
+    generator = service.LocalLlmDeckGenerator(client=client, check_ready=check_ready)
     options = PresentationCreate(
-        topic="Sales review",
-        num_slides=3,
-        include_sources_slide=True,
+        topic="Sales review", num_slides=3, include_sources_slide=True
     ).model_dump()
     progress = []
-
     deck = generator.generate(
-        notebook=SimpleNamespace(id=1),
-        options=options,
-        documents=[],
-        progress=progress.append,
+        notebook=SimpleNamespace(id=1), options=options,
+        documents=[], progress=progress.append,
     )
 
+    assert client.ready_checks == int(check_ready)
     assert len(deck.slides) == 2
     assert deck.slides[0].subtitle == "Sales overview"
     assert deck.slides[1].bullets[0].text == "Review the findings"
-
     assert [call["schema"] for call in client.calls] == [
-        PresentationOutlineResponse,
-        SlideContentDraft,
-        SlideContentDraft,
+        PresentationOutlineResponse, SlideContentDraft, SlideContentDraft,
     ]
     assert progress == [
-        "reading documents",
-        "outline",
-        "content 0/2",
-        "content 1/2",
-        "content 2/2",
+        "reading documents", "outline", "content 0/2", "content 1/2", "content 2/2",
     ]

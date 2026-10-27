@@ -8,11 +8,16 @@ from pydantic import BaseModel, ValidationError
 
 
 class ScriptedLLMClient:
+    model_name = "scripted-test-model"
     def __init__(self, *responses):
         self._responses = deque(deepcopy(responses))
         self.calls = []
         self.unexpected_calls = 0
+        self.ready_checks = 0
 
+    def check_ready(self) -> None:
+        self.ready_checks += 1
+        
     @classmethod
     def sequence(cls, *responses):
         """Compatibility with existing FakeClient.sequence(...) calls."""

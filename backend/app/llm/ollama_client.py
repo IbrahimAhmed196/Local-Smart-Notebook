@@ -3,10 +3,12 @@ import json
 import logging
 import requests
 from pydantic import BaseModel, ValidationError
-from typing import Type
+from typing import TypeVar
 
 from app.core.config import settings
+from app.llm.errors import LlmUnavailableError
 
+T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
 
 # Week 6 presentation edits (LLM-01): the JSON client now has timeouts, separate error types,
@@ -49,13 +51,42 @@ class OllamaJSONClient:
             read_timeout or settings.ollama_read_timeout_seconds,
         )
 
+    def check_ready(self) -> None:
+        """Fail before generation if Ollama or the requested model is missing."""
+        try:
+            reply = requests.get(f"{self.base_url}/api/tags", timeout=3)
+            reply.raise_for_status()
+        except requests.RequestException as exc:
+            raise LlmUnavailableError(
+                f"Cannot reach Ollama at {self.base_url}. Start it with: ollama serve"
+            ) from exc
+
+        try:
+            payload = reply.json()
+            models = payload["models"]
+            if not isinstance(models, list):
+                raise TypeError("models must be a list")
+            names = [model["name"] for model in models]
+            if not all(isinstance(name, str) for name in names):
+                raise TypeError("model names must be strings")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise LlmUnavailableError(
+                "Ollama returned an unreadable model list. Check the Ollama server."
+            ) from exc
+
+        wanted = self.model_name
+        if wanted not in names and f"{wanted}:latest" not in names:
+            raise LlmUnavailableError(
+                f"The model '{wanted}' is not installed. Run: ollama pull {wanted}"
+            )    
+
     def generate_json(
         self,
         prompt: str,
-        response_schema: Type[BaseModel],
+        response_schema: type[T],
         temperature: float = 0.3,
         num_ctx: int | None = None,
-    ) -> BaseModel:
+    ) -> T:
         system_prompt = (
             f"You are an AI assistant that outputs strictly valid JSON matching this Pydantic schema: "
             f"{response_schema.model_json_schema()}"
@@ -129,7 +160,7 @@ class OllamaJSONClient:
             raise OllamaInvalidJSONError(f"Ollama sent an unreadable reply ({type(exc).__name__}).") from exc
 
     @staticmethod
-    def _parse(content: str, response_schema: Type[BaseModel]) -> BaseModel:
+    def _parse(content: str, response_schema: type[T]) -> T:
         try:
             data = json.loads(content)
         except (ValueError, TypeError) as exc:

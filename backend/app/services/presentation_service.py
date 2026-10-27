@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
  
-import requests
 from sqlalchemy.orm import Session
  
 from app.agents.slide_content_agent import generate_presentation_content
@@ -29,38 +28,11 @@ from app.services import presentation_context
 from app.tools.chart_tool import sources_from_documents
 from app.tools.pptx_tool import build_pptx
 from app.presentations.outline import generate_outline
+from app.llm.base import LlmClient
+from app.llm.errors import LlmUnavailableError
  
 log = logging.getLogger(__name__)
  
- 
-class LlmUnavailableError(RuntimeError):
-    """Ollama is not running, or the model has not been downloaded."""
- 
- 
-# ------------------------------------------------------------------ the AI chain
-
- 
- 
-def ensure_llm_ready(client) -> None:
-    """Fail at once, with a readable message, if Ollama or the model is missing.
- 
-    Without this check Task 2's writer would turn every slide into a placeholder."""
-    base_url = client.base_url
-    try:
-        reply = requests.get(f"{base_url}/api/tags", timeout=3)
-        reply.raise_for_status()
-    except requests.RequestException:
-        raise LlmUnavailableError(
-            f"Cannot reach Ollama at {base_url}. Start it with: ollama serve"
-        )
-    names = [m.get("name", "") for m in reply.json().get("models", [])]
-    wanted = client.model_name
-    if wanted not in names and f"{wanted}:latest" not in names:
-        raise LlmUnavailableError(
-            f"The model '{wanted}' is not installed. Run: ollama pull {wanted}"
-        )
- 
-
 class DeckGenerator(Protocol):
     def generate(
         self,
@@ -75,13 +47,13 @@ class DeckGenerator(Protocol):
 class LocalLlmDeckGenerator:
     """Task 1 (outline) + Task 2 (slide content) with the local model."""
  
-    def __init__(self, client=None, check_ready: bool = True):
-        self.client = client or OllamaJSONClient()
+    def __init__(self, client: LlmClient | None = None, check_ready: bool = True,):
+        self.client: LlmClient = (client if client is not None else OllamaJSONClient())
         self.check_ready = check_ready
  
     def generate(self, *, notebook, options, documents, progress) -> PresentationContent:
         if self.check_ready:
-            ensure_llm_ready(self.client)
+            self.client.check_ready()
         progress("reading documents")
         chunks = presentation_context.build_chunks(documents)
         data_files = sources_from_documents(documents)
