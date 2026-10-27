@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     chat_timeout_seconds: float = 180    # a small local model can be slow on CPU
     chat_history_messages: int = 12      # how many earlier messages the model sees
     chat_context_chars: int = 6000       # how much document text is put in the prompt
+
+    # Week 6 presentation edits (LLM-01): timeouts for the JSON client (outline + slide content).
+    ollama_connect_timeout_seconds: float = 5     # Ollama not running -> fail fast
+    ollama_read_timeout_seconds: float = 300      # one slide on a CPU-only laptop can take minutes
  
     @property
     def artifacts_dir(self) -> Path:

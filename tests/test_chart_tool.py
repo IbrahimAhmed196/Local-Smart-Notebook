@@ -180,3 +180,145 @@ def test_table_limits_rows_and_columns(tmp_path):
 def test_table_with_an_unknown_column_is_rejected(xlsx):
     with pytest.raises(ChartToolError):
         build_table_data(TableSpec(title="t", document_id=1, sheet="Q1", columns=["Region", "Nope"]), xlsx)
+
+
+# ---- Week 6 presentation edits (DAT-04): robust spreadsheet reading and caching ----
+
+import openpyxl
+
+from app.tools import chart_tool
+from app.tools.chart_tool import _parse_number, clear_sheet_cache
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cache():
+    clear_sheet_cache()
+    yield
+    clear_sheet_cache()
+
+
+def _workbook(tmp_path, rows, name="report.xlsx", merge_title=False):
+    path = tmp_path / name
+    book = openpyxl.Workbook()
+    sheet = book.active
+    sheet.title = "Report"
+    for row in rows:
+        sheet.append(row)
+    if merge_title:
+        sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=3)
+    book.save(path)
+    return [DataSource(1, name, path)]
+
+
+def test_a_title_row_above_the_header_is_skipped(tmp_path):
+    src = _workbook(
+        tmp_path,
+        [["Q1 sales report", None, None], [None, None, None], ["Region", "Revenue", "Units"], ["North", 100, 1], ["South", 200, 2]],
+        merge_title=True,
+    )
+    (cat,) = describe_sources(src)
+    assert cat.sheets[0].columns == [("Region", "text"), ("Revenue", "number"), ("Units", "number")]
+    data = build_chart_data(chart(sheet="Report"), src)
+    assert data.categories == ["North", "South"] and data.series[0].values == [100.0, 200.0]
+
+
+def test_a_normal_header_in_row_one_still_works_when_a_data_row_is_full_and_the_header_is_not(tmp_path):
+    src = _workbook(tmp_path, [["Region", "Revenue", None], ["North", 100, 5]])
+    data = build_table_data(TableSpec(title="t", document_id=1, columns=["Region", "Revenue"]), src)
+    assert data.rows == [["North", 100]]
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("$1,200", 1200.0),
+        ("€ 1 200", 1200.0),
+        ("-$1,200.50", -1200.5),
+        ("(300)", -300.0),
+        ("12%", 0.12),
+        ("1.234,5", 1234.5),
+        ("1,234.5", 1234.5),
+        ("12,5", 12.5),
+        ("1.234.567", 1234567.0),
+        (7, 7.0),
+        ("  42 ", 42.0),
+    ],
+)
+def test_numbers_written_as_text_are_understood(text, expected):
+    assert _parse_number(text) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("text", ["North", "Q1 2024", "2024-01-05", "abc1", "", "1,2,3x", None, float("nan"), True])
+def test_text_that_is_not_a_number_is_not_one(text):
+    assert _parse_number(text) is None
+
+
+def test_currency_and_percent_text_columns_can_be_charted_and_are_listed_as_numbers(tmp_path):
+    src = _workbook(
+        tmp_path,
+        [["Region", "Revenue", "Growth", "Day"],
+         ["North", "$1,200", "12%", "2024-01-05"],
+         ["South", "$800", "5%", "2024-01-06"],
+         ["North", "$300", "7%", "2024-01-07"]],
+    )
+    (cat,) = describe_sources(src)
+    assert cat.sheets[0].columns == [("Region", "text"), ("Revenue", "number"), ("Growth", "number"), ("Day", "date")]
+    data = build_chart_data(chart(sheet="Report", y_columns=["Revenue", "Growth"]), src)
+    assert dict(zip(data.categories, data.series[0].values)) == {"North": 1500.0, "South": 800.0}
+    assert data.series[1].values == pytest.approx([0.19, 0.05])
+    table = build_table_data(TableSpec(title="t", document_id=1, sheet="Report", columns=["Revenue"], max_rows=1), src)
+    assert table.rows == [["$1,200"]]  # a table shows the cell as it is written in the file
+
+
+def test_a_column_of_words_is_still_not_a_number(tmp_path):
+    src = _workbook(tmp_path, [["Region", "Note"], ["North", "good"], ["South", "bad"]])
+    with pytest.raises(ChartToolError, match="has no numbers"):
+        build_chart_data(chart(sheet="Report", y_columns=["Note"]), src)
+
+
+def test_formulas_that_were_never_calculated_give_a_clear_error(tmp_path, caplog):
+    src = _workbook(tmp_path, [["Region", "Price", "Total"], ["North", 10, "=B2*2"], ["South", 20, "=B3*2"]])
+    with pytest.raises(ChartToolError, match="formulas that were never calculated"):
+        build_chart_data(chart(sheet="Report", y_columns=["Total"]), src)
+    with pytest.raises(ChartToolError, match="Column 'Total' is empty.*never calculated"):
+        build_table_data(TableSpec(title="t", document_id=1, sheet="Report", columns=["Region", "Total"]), src)
+    assert "formulas without a saved result" in caplog.text
+    # the columns that hold real values still work
+    assert build_chart_data(chart(sheet="Report", y_columns=["Price"]), src).series[0].values == [10.0, 20.0]
+
+
+def test_a_file_is_read_once_per_run_and_again_after_it_changes(tmp_path, monkeypatch):
+    src = _workbook(tmp_path, [["Region", "Revenue"], ["North", 1]])
+    reads = []
+    real = chart_tool.pd.read_excel
+    monkeypatch.setattr(chart_tool.pd, "read_excel", lambda *a, **k: (reads.append(1), real(*a, **k))[1])
+
+    describe_sources(src)
+    build_chart_data(chart(sheet="Report"), src)
+    build_chart_data(chart(sheet="Report", aggregation="mean"), src)
+    build_table_data(TableSpec(title="t", document_id=1, sheet="Report", columns=["Region"]), src)
+    assert len(reads) == 1
+
+    book = openpyxl.load_workbook(src[0].path)
+    book["Report"].append(["South", 2, ])
+    book.save(src[0].path)  # a different file size -> the cache entry is not reused
+    assert build_chart_data(chart(sheet="Report"), src).categories == ["North", "South"]
+    assert len(reads) == 2
+
+    clear_sheet_cache()
+    describe_sources(src)
+    assert len(reads) == 3
+
+
+def test_the_agent_clears_the_cache_after_a_deck(tmp_path, scripted_llm):
+    from app.agents.slide_content_agent import generate_presentation_content
+    from tests.slide_samples import mock_outline
+
+    src = _workbook(tmp_path, [["Region", "Revenue"], ["North", 1]])
+    describe_sources(src)
+    assert chart_tool._SHEET_CACHE
+    # every scripted answer is a failure -> placeholder slides; the cache must be cleared anyway
+    outline = mock_outline()
+    client = scripted_llm(*[RuntimeError("x")] * len(outline.slides))
+    generate_presentation_content(outline, data_files=src, client=client)
+    assert not chart_tool._SHEET_CACHE

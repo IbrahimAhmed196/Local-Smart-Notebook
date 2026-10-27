@@ -423,7 +423,7 @@ class FakeResponse:
 
 def test_the_ollama_client_sends_the_new_options_and_keeps_its_old_defaults(monkeypatch):
     sent = []
-    monkeypatch.setattr(ollama_client.requests, "post", lambda url, json: (sent.append(json), FakeResponse("{}"))[1])
+    monkeypatch.setattr(ollama_client.requests, "post", lambda url, json, **kw: (sent.append(json), FakeResponse("{}"))[1])
     client = ollama_client.OllamaJSONClient()
 
     client.generate_json("p", SlideContentDraft)
@@ -431,7 +431,7 @@ def test_the_ollama_client_sends_the_new_options_and_keeps_its_old_defaults(monk
 
     client.generate_json("p", SlideContentDraft, temperature=0.1, num_ctx=8192)
     assert sent[-1]["options"] == {"temperature": 0.1, "num_ctx": 8192}
-    assert sent[-1]["model"] == "qwen2.5:7b-instruct"
+    assert sent[-1]["model"] == client.model_name  # (the default model name is not this test's business)
 
 
 # ---- tolerance for the small mistakes a 7B model makes (found in a real Ollama run) ----

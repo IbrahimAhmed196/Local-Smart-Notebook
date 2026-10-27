@@ -2,9 +2,10 @@
 
 Kept in its own file so Task 1's schemas/slides.py stays untouched.
 """
+import math
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # The layouts the slide writer (Task 2) and the renderer (Task 3) both understand.
 SLIDE_LAYOUTS = ("title", "bullet_points", "two_columns", "chart", "table")
@@ -170,9 +171,18 @@ class SlideContentDraft(BaseModel):
         return None if value in ({}, [], "", "null", "none") else value
 
 
+# Week 6 presentation edits (DAT-01): ChartData / TableData used to accept anything, so a bad deck
+# (from the model or from PUT /deck) crashed python-pptx or drew a broken chart. They now reject it.
 class SeriesData(BaseModel):
     name: str
     values: List[float]
+
+    @field_validator("values")
+    @classmethod
+    def _finite(cls, values):
+        if any(not math.isfinite(v) for v in values):
+            raise ValueError("values must be real numbers (no NaN or infinity)")
+        return values
 
 
 class ChartData(BaseModel):
@@ -183,6 +193,23 @@ class ChartData(BaseModel):
     series: List[SeriesData]
     source: str = Field(..., description="Which file / sheet the numbers came from")
 
+    @model_validator(mode="after")
+    def _consistent(self):
+        if not self.categories or any(not c.strip() for c in self.categories):
+            raise ValueError("a chart needs at least one category and no empty category names")
+        if not self.series:
+            raise ValueError("a chart needs at least one series")
+        names = [s.name.strip().casefold() for s in self.series]
+        if len(set(names)) != len(names):
+            raise ValueError("series names must be different from each other")
+        for s in self.series:
+            if len(s.values) != len(self.categories):
+                raise ValueError(
+                    f"series '{s.name}' has {len(s.values)} values but the chart has "
+                    f"{len(self.categories)} categories"
+                )
+        return self
+
 
 class TableData(BaseModel):
     """A table with its cells already read from the file, ready for the renderer."""
@@ -190,6 +217,17 @@ class TableData(BaseModel):
     columns: List[str]
     rows: List[List[Union[str, int, float, None]]]
     source: str
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if not self.columns or any(not c.strip() for c in self.columns):
+            raise ValueError("a table needs at least one column and no empty column names")
+        for number, row in enumerate(self.rows, start=1):
+            if len(row) != len(self.columns):
+                raise ValueError(f"row {number} has {len(row)} cells but the table has {len(self.columns)} columns")
+            if any(isinstance(cell, float) and not math.isfinite(cell) for cell in row):
+                raise ValueError(f"row {number} contains NaN or infinity")
+        return self
 
 
 class SlideContent(BaseModel):

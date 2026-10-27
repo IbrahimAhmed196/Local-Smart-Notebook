@@ -35,6 +35,7 @@ from app.tools.chart_tool import (
     DataSource,
     build_chart_data,
     build_table_data,
+    clear_sheet_cache,
     describe_sources,
 )
 
@@ -72,22 +73,27 @@ def generate_presentation_content(
     client = client or OllamaJSONClient()
     items = sorted(outline.slides, key=lambda s: s.slide_number)
     slides: List[SlideContent] = []
-    for done, item in enumerate(items, start=1):
-        chunks = chunks_for_slide(item) if chunks_for_slide else []
-        slides.append(
-            generate_slide_content(
-                item,
-                presentation_title=outline.presentation_title,
-                audience=outline.target_audience,
-                style=style,
-                user_request=user_request,
-                chunks=chunks,
-                data_files=data_files,
-                client=client,
+    # Week 6 presentation edits (DAT-04): spreadsheets are read once per deck, then the cache is dropped.
+    clear_sheet_cache()
+    try:
+        for done, item in enumerate(items, start=1):
+            chunks = chunks_for_slide(item) if chunks_for_slide else []
+            slides.append(
+                generate_slide_content(
+                    item,
+                    presentation_title=outline.presentation_title,
+                    audience=outline.target_audience,
+                    style=style,
+                    user_request=user_request,
+                    chunks=chunks,
+                    data_files=data_files,
+                    client=client,
+                )
             )
-        )
-        if on_progress:
-            on_progress(done, len(items))
+            if on_progress:
+                on_progress(done, len(items))
+    finally:
+        clear_sheet_cache()
     return PresentationContent(
         presentation_title=outline.presentation_title,
         target_audience=outline.target_audience,
