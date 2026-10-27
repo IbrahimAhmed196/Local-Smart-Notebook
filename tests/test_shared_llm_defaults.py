@@ -5,8 +5,9 @@ from app.agents import slide_content_agent as agent
 from app.core.config import Settings, settings
 from app.llm.ollama_client import OllamaChatClient, OllamaJSONClient
 from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
-from app.services import chat_service, presentation_service
+from app.services import chat_service
 from tests.fake_llm import ScriptedLLMClient
+from app.presentations import generator as deck_generation
 
 @pytest.mark.parametrize("client_type", [OllamaJSONClient, OllamaChatClient])
 def test_shared_clients_use_generic_settings(monkeypatch, client_type):
@@ -31,7 +32,7 @@ def test_feature_factories_choose_their_own_models(monkeypatch):
     monkeypatch.setattr(settings, "ollama_model", "shared-model")
     monkeypatch.setattr(settings, "presentation_model", "slides-model")
     monkeypatch.setattr(settings, "chat_model", "chat-model")
-    assert presentation_service.get_generator().client.model_name == "slides-model"
+    assert deck_generation.get_generator().client.model_name == "slides-model"
     assert chat_service.get_chat_client().model_name == "chat-model"
 
 @pytest.mark.parametrize("whole_deck", [False, True])

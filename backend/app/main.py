@@ -9,7 +9,8 @@ from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
 from app.database import models  # noqa: F401  (registers the tables for Alembic)
-from app.services import file_storage, presentation_service 
+from app.services import file_storage
+from app.presentations import runner as presentation_runner 
 
 import asyncio
 import sys
@@ -26,7 +27,7 @@ if sys.platform == "win32":
 async def lifespan(app: FastAPI):
     setup_logging()
     file_storage.ensure_dirs()  # data/uploads and data/temporary
-    presentation_service.fail_interrupted_jobs()
+    presentation_runner.fail_interrupted_jobs()
     yield
 
 

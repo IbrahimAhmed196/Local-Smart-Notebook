@@ -7,6 +7,7 @@ from app.schemas.presentations import PresentationCreate
 from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 from app.services import presentation_service as service
 from app.presentations.outline import clean_outline
+from app.presentations import runner
 
 
 @pytest.fixture()
@@ -44,13 +45,13 @@ def test_generation_lifecycle(
     monkeypatch.setattr(service.job_manager, "submit", observe_submit)
 
     # Record committed transitions while preserving the real _touch().
-    original_touch = service._touch
+    original_touch = runner._touch
 
     def observe_touch(session, presentation, **fields):
         original_touch(session, presentation, **fields)
         events.append((presentation.status, presentation.stage))
 
-    monkeypatch.setattr(service, "_touch", observe_touch)
+    monkeypatch.setattr(runner, "_touch", observe_touch)
 
     if fails:
         fake_generator.error = RuntimeError("Generation failed")
@@ -168,7 +169,7 @@ def test_fail_interrupted_jobs_only_changes_unfinished_jobs(db, notebook):
     db.add_all(presentations)
     db.commit()
 
-    assert service.fail_interrupted_jobs() == 2
+    assert runner.fail_interrupted_jobs() == 2
 
     # The function uses a separate database session.
     db.expire_all()
@@ -183,7 +184,7 @@ def test_fail_interrupted_jobs_only_changes_unfinished_jobs(db, notebook):
     assert presentations[3].error == "Existing failure"
 
     # Calling it again should not change already-finished jobs.
-    assert service.fail_interrupted_jobs() == 0
+    assert runner.fail_interrupted_jobs() == 0
 
 
 def make_outline():

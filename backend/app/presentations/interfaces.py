@@ -9,6 +9,7 @@ from __future__ import annotations
 from threading import Event
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Protocol
+from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from app.database.models import Document, Notebook
@@ -93,19 +94,44 @@ class SlideWriter(Protocol):
         ...
 
 
-class DeckGenerator(Protocol):
-    """The generation boundary used by the background runner.
+@dataclass(frozen=True)
+class GenerationSources:
+    """Existing text chunks and spreadsheet inputs; no new extraction policy."""
+    chunks: Sequence[SourceChunk]
+    data_files: Sequence[DataSource]
 
-    ARC-04 will align implementations with Sequence document inputs.
-    """
+
+class DeckGenerator(Protocol):
+    """Generation stages used by the runner, plus a whole-deck convenience API."""
+
+    def prepare(
+        self, *, notebook: Notebook, options: dict,
+        documents: Sequence[Document], cancel_event: Event | None = None,
+    ) -> None:
+        ...
+
+    def read_context(
+        self, documents: Sequence[Document], *,
+        cancel_event: Event | None = None,
+    ) -> GenerationSources:
+        ...
+
+    def outline(
+        self, options: dict, sources: GenerationSources, *,
+        cancel_event: Event | None = None,
+    ) -> PresentationOutlineResponse:
+        ...
+
+    def write_slides(
+        self, options: dict, sources: GenerationSources,
+        outline: PresentationOutlineResponse, *, progress: ProgressCallback,
+        cancel_event: Event | None = None,
+    ) -> PresentationContent:
+        ...
 
     def generate(
-        self,
-        *,
-        notebook: Notebook,
-        options: dict,
-        documents: Sequence[Document],
-        progress: ProgressCallback,
+        self, *, notebook: Notebook, options: dict,
+        documents: Sequence[Document], progress: ProgressCallback,
         cancel_event: Event | None = None,
     ) -> PresentationContent:
         ...

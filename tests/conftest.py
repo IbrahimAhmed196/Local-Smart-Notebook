@@ -9,6 +9,7 @@ from app.database import database as database_module
 from app.database.database import Base, get_db
 from app.jobs.manager import job_manager
 from app.main import app
+from app.presentations import generator as deck_generation
  
  
 @pytest.fixture(autouse=True)
@@ -104,31 +105,77 @@ def sample_deck():
 
 @pytest.fixture()
 def fake_generator(monkeypatch, sample_deck):
-    """Replace AI generation while keeping the real service and renderer."""
-    from app.services import presentation_service as service
+    """Replace generation stages while keeping the real runner and renderer."""
+    from app.presentations.interfaces import GenerationSources
+    from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 
     class FakeDeckGenerator:
         def __init__(self):
             self.calls = []
+            self.stages = []
             self.error = None
+            self.error_stage = "outline"
 
-        def generate(self, *, notebook, options, documents, progress):
+        def _enter(self, stage):
+            self.stages.append(stage)
+            if self.error is not None and self.error_stage == stage:
+                raise self.error
+
+        def prepare(self, *, notebook, options, documents, cancel_event=None):
             self.calls.append({
                 "notebook_id": notebook.id,
                 "options": options,
                 "document_ids": [document.id for document in documents],
             })
+            self._enter("prepare")
 
-            progress("outline")
+        def read_context(self, documents, *, cancel_event=None):
+            self._enter("read_context")
+            return GenerationSources(chunks=[], data_files=[])
 
-            if self.error is not None:
-                raise self.error
+        def outline(self, options, sources, *, cancel_event=None):
+            self._enter("outline")
+            return PresentationOutlineResponse(
+                presentation_title=sample_deck.presentation_title,
+                target_audience=sample_deck.target_audience,
+                slides=[
+                    SlideOutlineItem(
+                        slide_number=i,
+                        title=slide.title,
+                        purpose="Test slide",
+                        layout_type=slide.layout_type,
+                    )
+                    for i, slide in enumerate(sample_deck.slides, start=1)
+                ],
+            )
 
-            progress("content 5/5")
+        def write_slides(
+            self, options, sources, outline, *, progress, cancel_event=None
+        ):
+            self._enter("write_slides")
+            count = len(sample_deck.slides)
+            progress(f"content {count}/{count}")
             return sample_deck.model_copy(deep=True)
 
+        def generate(
+            self, *, notebook, options, documents, progress, cancel_event=None
+        ):
+            self.prepare(
+                notebook=notebook, options=options, documents=documents,
+                cancel_event=cancel_event,
+            )
+            progress("reading documents")
+            sources = self.read_context(documents, cancel_event=cancel_event)
+            progress("outline")
+            outline = self.outline(options, sources, cancel_event=cancel_event)
+            progress(f"content 0/{len(outline.slides)}")
+            return self.write_slides(
+                options, sources, outline,
+                progress=progress, cancel_event=cancel_event,
+            )
+
     generator = FakeDeckGenerator()
-    monkeypatch.setattr(service, "get_generator", lambda: generator)
+    monkeypatch.setattr(deck_generation, "get_generator", lambda: generator)
     return generator
 
 @pytest.fixture()

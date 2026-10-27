@@ -5,8 +5,8 @@ import pytest
 from app.schemas.presentations import PresentationCreate
 from app.schemas.slide_content import SlideContentDraft
 from app.schemas.slides import PresentationOutlineResponse
-from app.services import presentation_service as service
 from app.presentations.outline import generate_outline
+from app.presentations import generator as deck_generation
 
 
 def outline_response():
@@ -81,7 +81,7 @@ def test_generator_uses_one_client_for_outline_and_slide_content(scripted_llm, c
             "speaker_notes": "Discuss the findings.",
         },
     )
-    generator = service.LocalLlmDeckGenerator(client=client, check_ready=check_ready)
+    generator = deck_generation.LocalLlmDeckGenerator(client=client, check_ready=check_ready)
     options = PresentationCreate(
         topic="Sales review", num_slides=3, include_sources_slide=True
     ).model_dump()

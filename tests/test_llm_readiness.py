@@ -5,7 +5,7 @@ import requests
 from app.llm import ollama_client
 from app.llm.errors import LlmUnavailableError
 from app.llm.ollama_client import OllamaJSONClient
-from app.services import presentation_service as service
+from app.presentations import generator as deck_generation
 
 @pytest.mark.parametrize("installed_name", ["team-model", "team-model:latest"])
 def test_ready_model_is_accepted(monkeypatch, installed_name):
@@ -63,9 +63,9 @@ def test_readiness_failure_stops_before_document_processing(scripted_llm, monkey
     check = Mock(side_effect=LlmUnavailableError("Model unavailable"))
     monkeypatch.setattr(client, "check_ready", check)
     build_chunks = Mock()
-    monkeypatch.setattr(service.presentation_context, "build_chunks", build_chunks)
+    monkeypatch.setattr(deck_generation.presentation_context, "build_chunks", build_chunks)
     progress = Mock()
-    generator = service.LocalLlmDeckGenerator(client=client)
+    generator = deck_generation.LocalLlmDeckGenerator(client=client)
 
     with pytest.raises(LlmUnavailableError, match="Model unavailable"):
         generator.generate(
