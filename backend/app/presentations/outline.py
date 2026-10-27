@@ -1,6 +1,7 @@
 """Presentation outline generation and deterministic repairs."""
 
 from collections.abc import Sequence
+from threading import Event
 
 from app.core.config import settings
 from app.llm.base import LlmClient
@@ -16,6 +17,8 @@ def generate_outline(
     options: dict,
     chunks: Sequence[SourceChunk],
     data_names: Sequence[str],
+    *,
+    cancel_event: Event | None = None,
 ) -> PresentationOutlineResponse:
     """Generate an outline and apply the existing deterministic repairs."""
     layouts = [
@@ -55,9 +58,9 @@ def generate_outline(
     outline = client.generate_json(
         prompt,
         PresentationOutlineResponse,
-        # Week 6 presentation edits (ARC-07): both values come from core/config.py (.env).
         temperature=settings.outline_temperature,
         num_ctx=settings.presentation_num_ctx,
+        cancel_event=cancel_event,
     )
 
     return clean_outline(

@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
+from threading import Event
 from sqlalchemy.orm import Session
 from app.agents.slide_content_agent import generate_presentation_content
 from app.artifacts import manager as artifacts
@@ -21,6 +22,7 @@ from app.schemas.slide_content import PresentationContent
 from app.services import presentation_context
 from app.tools.chart_tool import sources_from_documents
 from app.tools.pptx_tool import build_pptx
+from app.llm.cancellation import raise_if_cancelled
 
 log = logging.getLogger(__name__)
 
@@ -32,10 +34,11 @@ class DeckGenerator(Protocol):
         options: dict,
         documents: list[Document],
         progress: Callable[[str], None],
+        cancel_event: Event | None = None,
     ) -> PresentationContent: ...
 
 class LocalLlmDeckGenerator:
-    """Generate an outline and slide content using the selected presentation model."""
+    """Generate an outline followed by its slide content."""
 
     def __init__(self, client: LlmClient | None = None, check_ready: bool = True):
         self.client: LlmClient = (
@@ -44,16 +47,29 @@ class LocalLlmDeckGenerator:
         )
         self.check_ready = check_ready
 
-    def generate(self, *, notebook, options, documents, progress) -> PresentationContent:
+    def generate(
+        self, *, notebook, options, documents, progress,
+        cancel_event: Event | None = None,
+    ) -> PresentationContent:
+        raise_if_cancelled(cancel_event)
         if self.check_ready:
             self.client.check_ready()
+
         progress("reading documents")
         chunks = presentation_context.build_chunks(documents)
         data_files = sources_from_documents(documents)
+
         progress("outline")
-        outline = generate_outline(self.client, options, chunks, [d.filename for d in data_files])
+        outline = generate_outline(
+            self.client,
+            options,
+            chunks,
+            [d.filename for d in data_files],
+            cancel_event=cancel_event,
+        )
         total = len(outline.slides)
         progress(f"content 0/{total}")
+
         return generate_presentation_content(
             outline,
             chunks_for_slide=presentation_context.make_selector(chunks),
@@ -61,6 +77,7 @@ class LocalLlmDeckGenerator:
             style=options["style"],
             user_request=options["topic"],
             client=self.client,
+            cancel_event=cancel_event,
             on_progress=lambda done, count: progress(f"content {done}/{count}"),
         )
 

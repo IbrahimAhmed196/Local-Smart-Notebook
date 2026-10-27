@@ -1,6 +1,6 @@
 """Target interface for JSON language-model clients."""
 
-import threading
+from threading import Event
 from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
@@ -22,7 +22,7 @@ class LlmClient(Protocol):
         response_schema: type[T],
         temperature: float = 0.3,
         num_ctx: int | None = None,
-        cancel_event: threading.Event | None = None,
+        cancel_event: Event | None = None,
     ) -> T:
         """Return a validated object.
 

@@ -3,7 +3,8 @@
 import json
 from collections import deque
 from copy import deepcopy
-
+from threading import Event
+from app.llm.cancellation import raise_if_cancelled
 from pydantic import BaseModel, ValidationError
 
 
@@ -43,12 +44,15 @@ class ScriptedLLMClient:
         response_schema,
         temperature=0.3,
         num_ctx=None,
+        cancel_event: Event | None = None,
     ):
+        raise_if_cancelled(cancel_event)
         self.calls.append({
             "prompt": prompt,
             "schema": response_schema,
             "temperature": temperature,
             "num_ctx": num_ctx,
+            "cancel_event": cancel_event,
         })
 
         if not self._responses:

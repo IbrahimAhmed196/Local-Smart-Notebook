@@ -6,7 +6,7 @@ when this module is imported.
 """
 
 from __future__ import annotations
-
+from threading import Event
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Protocol
 
@@ -67,6 +67,8 @@ class OutlineGenerator(Protocol):
         options: dict,
         chunks: Sequence[SourceChunk],
         data_names: Sequence[str],
+        *,
+        cancel_event: Event | None = None,
     ) -> PresentationOutlineResponse:
         ...
 
@@ -86,6 +88,7 @@ class SlideWriter(Protocol):
         user_request: str = "",
         client: LlmClient | None = None,
         on_progress: Callable[[int, int], None] | None = None,
+        cancel_event: Event | None = None,
     ) -> PresentationContent:
         ...
 
@@ -103,5 +106,6 @@ class DeckGenerator(Protocol):
         options: dict,
         documents: Sequence[Document],
         progress: ProgressCallback,
+        cancel_event: Event | None = None,
     ) -> PresentationContent:
         ...

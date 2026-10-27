@@ -1,11 +1,14 @@
 """Reusable Ollama clients for validated JSON generation and plain-text chat."""
 import json
 import logging
+import httpx
 from typing import TypeVar
+from threading import Event
 import requests
 from pydantic import BaseModel, ValidationError
 from app.core.config import settings
 from app.llm.errors import LlmUnavailableError
+from app.llm.cancellation import StreamError, post_chat_stream, raise_if_cancelled
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
@@ -85,7 +88,9 @@ class OllamaJSONClient:
         response_schema: type[T],
         temperature: float = 0.3,
         num_ctx: int | None = None,
+        cancel_event: Event | None = None,
     ) -> T:
+        raise_if_cancelled(cancel_event)
         schema = response_schema.model_json_schema()
         system_prompt = (
             "You are an AI assistant that outputs strictly valid JSON matching this Pydantic schema: "
@@ -99,7 +104,9 @@ class OllamaJSONClient:
         user_prompt = prompt
         last_error: OllamaError | None = None
         attempt = 1
+
         while attempt <= self.max_attempts:
+            raise_if_cancelled(cancel_event)
             payload = {
                 "model": self.model_name,
                 "messages": [
@@ -107,20 +114,30 @@ class OllamaJSONClient:
                     {"role": "user", "content": user_prompt},
                 ],
                 "format": schema if self.structured_output else "json",
-                "stream": False,
+                "stream": cancel_event is not None,
                 "options": options,
             }
             try:
-                content = self._post(payload)
-                return self._parse(content, response_schema)
+                content = (
+                    self._post(payload) if cancel_event is None
+                    else self._post_cancellable(payload, cancel_event)
+                )
+                raise_if_cancelled(cancel_event)
+                result = self._parse(content, response_schema)
+                raise_if_cancelled(cancel_event)
+                return result
             except OllamaFormatRejectedError:
+                raise_if_cancelled(cancel_event)
                 log.warning(
-                    "Ollama does not accept a JSON schema in 'format' (old version?); using format='json'"
+                    "Ollama does not accept a JSON schema in 'format'; using format='json'"
                 )
                 self.structured_output = False
                 continue
             except (OllamaInvalidJSONError, OllamaSchemaError) as exc:
-                log.warning("Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc)
+                raise_if_cancelled(cancel_event)
+                log.warning(
+                    "Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc
+                )
                 self.bad_answers += 1
                 attempt += 1
                 last_error = exc
@@ -129,8 +146,12 @@ class OllamaJSONClient:
                     "Answer again with ONLY corrected JSON that matches the schema."
                 )
             except OllamaError as exc:
-                log.warning("Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc)
+                raise_if_cancelled(cancel_event)
+                log.warning(
+                    "Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc
+                )
                 raise
+
         raise type(last_error)(
             f"The AI model did not return valid JSON after {self.max_attempts} attempts. "
             f"Last error: {type(last_error.__cause__ or last_error).__name__}: {str(last_error)[:600]}"
@@ -169,6 +190,32 @@ class OllamaJSONClient:
                 f"Ollama sent an unreadable reply ({type(exc).__name__})."
             ) from exc
 
+    def _post_cancellable(self, payload: dict, cancel_event: Event) -> str:
+        try:
+            return post_chat_stream(
+                f"{self.base_url}/api/chat", payload, self.timeout, cancel_event
+            )
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise OllamaUnreachableError(
+                f"Cannot reach Ollama at {self.base_url}. Start it with: ollama serve"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise OllamaTimeoutError("The streaming AI request timed out.") from exc
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            if status == 400 and isinstance(payload.get("format"), dict):
+                raise OllamaFormatRejectedError(
+                    "The server does not accept a JSON schema in 'format'."
+                ) from exc
+            if status == 404:
+                raise OllamaUnreachableError(
+                    f"The model '{self.model_name}' is not installed. "
+                    f"Run: ollama pull {self.model_name}"
+                ) from exc
+            raise OllamaError(f"The AI model returned an error (HTTP {status}).") from exc
+        except (httpx.RequestError, StreamError) as exc:
+            raise OllamaError(f"Could not complete the AI stream: {exc}") from exc
+        
     @staticmethod
     def _parse(content: str, response_schema: type[T]) -> T:
         try:

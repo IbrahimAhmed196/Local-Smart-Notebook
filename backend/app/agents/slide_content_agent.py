@@ -1,5 +1,6 @@
 """Write presentation slide content, validate citations, and resolve spreadsheet data."""
 import logging
+from threading import Event
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from app.agents.citation_validator import (
     collect_source_ids, find_invalid_source_ids, strip_invalid_source_ids,
@@ -16,6 +17,8 @@ from app.tools.chart_tool import (
     ChartToolError, DataSource, build_chart_data, build_table_data,
     clear_sheet_cache, describe_sources,
 )
+from app.core.exceptions import GenerationCancelled
+from app.llm.cancellation import raise_if_cancelled
 
 log = logging.getLogger(__name__)
 TEMPERATURE = settings.slide_temperature
@@ -34,25 +37,33 @@ def generate_presentation_content(
     user_request: str = "",
     client=None,
     on_progress: Optional[Callable[[int, int], None]] = None,
+    cancel_event: Event | None = None,
 ) -> PresentationContent:
-    """Write every slide in slide order."""
-    client = client if client is not None else OllamaJSONClient(model_name=settings.presentation_model)
+    """Write every slide in outline order."""
+    raise_if_cancelled(cancel_event)
+    client = client if client is not None else OllamaJSONClient(
+        model_name=settings.presentation_model
+    )
     items = sorted(outline.slides, key=lambda s: s.slide_number)
     slides: List[SlideContent] = []
     clear_sheet_cache()
     try:
         for done, item in enumerate(items, start=1):
+            raise_if_cancelled(cancel_event)
             chunks = chunks_for_slide(item) if chunks_for_slide else []
-            slides.append(generate_slide_content(
-                item,
-                presentation_title=outline.presentation_title,
-                audience=outline.target_audience,
-                style=style,
-                user_request=user_request,
-                chunks=chunks,
-                data_files=data_files,
-                client=client,
-            ))
+            slides.append(
+                generate_slide_content(
+                    item,
+                    presentation_title=outline.presentation_title,
+                    audience=outline.target_audience,
+                    style=style,
+                    user_request=user_request,
+                    chunks=chunks,
+                    data_files=data_files,
+                    client=client,
+                    cancel_event=cancel_event,
+                )
+            )
             if on_progress:
                 on_progress(done, len(items))
     finally:
@@ -62,6 +73,7 @@ def generate_presentation_content(
         target_audience=outline.target_audience,
         slides=slides,
     )
+
 
 def generate_slide_content(
     item: SlideOutlineItem,
@@ -73,16 +85,23 @@ def generate_slide_content(
     chunks: Sequence[SourceChunk] = (),
     data_files: Sequence[DataSource] = (),
     client=None,
+    cancel_event: Event | None = None,
 ) -> SlideContent:
-    """Write one slide; model failures produce a placeholder."""
-    client = client if client is not None else OllamaJSONClient(model_name=settings.presentation_model)
+    """Write one slide; cancellation propagates to the caller."""
+    raise_if_cancelled(cancel_event)
+    client = client if client is not None else OllamaJSONClient(
+        model_name=settings.presentation_model
+    )
     layout, warnings = _normalise_layout(item.layout_type)
     catalog = []
     if layout in DATA_LAYOUTS:
         catalog = describe_sources(data_files)
         if not catalog:
-            warnings.append(f"No spreadsheet is available for a {layout} slide, so bullet_points was used.")
+            warnings.append(
+                f"No spreadsheet is available for a {layout} slide, so bullet_points was used."
+            )
             layout = DEFAULT_LAYOUT
+
     shown = _prepare_sources(chunks)
 
     def prompt_with(feedback: str) -> str:
@@ -105,18 +124,27 @@ def generate_slide_content(
     for _ in range(MAX_ATTEMPTS):
         try:
             draft = client.generate_json(
-                prompt_with(feedback), SlideContentDraft,
-                temperature=TEMPERATURE, num_ctx=NUM_CTX,
+                prompt_with(feedback),
+                SlideContentDraft,
+                temperature=TEMPERATURE,
+                num_ctx=NUM_CTX,
+                cancel_event=cancel_event,
             )
+        except GenerationCancelled:
+            raise
         except Exception as exc:
             log.exception("Slide %s: the LLM call failed", item.slide_number)
             if draft is None:
                 return _fallback_slide(item, layout, warnings, str(exc))
             break
-        invalid = find_invalid_source_ids(draft.bullets + draft.right_bullets, shown.keys())
+
+        invalid = find_invalid_source_ids(
+            draft.bullets + draft.right_bullets, shown.keys()
+        )
         if not invalid:
             break
         feedback = _correction(invalid, list(shown.keys()))
+
     return _finish_slide(item, layout, draft, shown, data_files, warnings)
 
 def _finish_slide(
