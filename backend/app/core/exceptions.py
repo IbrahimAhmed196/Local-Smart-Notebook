@@ -29,4 +29,4 @@ class UnsupportedFileTypeError(AppError):
     status_code = 415
 
 class GenerationCancelled(Exception):
-    """The user cancelled presentation generation."""
+    """The user cancelled a generation operation."""

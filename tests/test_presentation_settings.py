@@ -1,13 +1,11 @@
-"""Week 6 presentation edits (ARC-07): presentation settings live in core/config.py and can be set in .env."""
+"""Settings remain configurable, with shared defaults separate from feature policy."""
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-
 import pytest
 from pydantic import ValidationError
-
 from app.core.config import Settings, settings
 from app.llm.ollama_client import OllamaJSONClient
 from app.presentations.outline import generate_outline
@@ -15,15 +13,10 @@ from app.schemas.presentations import PresentationCreate
 
 ROOT = Path(__file__).resolve().parents[1]
 
-
 def fresh(monkeypatch, **env):
-    """Settings as the app would build them from these environment variables (and no .env file)."""
     for name, value in env.items():
         monkeypatch.setenv(name, str(value))
     return Settings(_env_file=None)
-
-
-# ---------------------------------------------------------------- the defaults are the old hard-coded values
 
 def test_the_defaults_are_exactly_the_values_that_used_to_be_hard_coded(monkeypatch):
     for name in ("PRESENTATION_MODEL", "LSN_PRESENTATION_MODEL"):
@@ -36,9 +29,6 @@ def test_the_defaults_are_exactly_the_values_that_used_to_be_hard_coded(monkeypa
     assert (s.table_max_rows, s.table_max_columns) == (15, 6)
     assert (s.catalog_max_files, s.catalog_max_sheets, s.catalog_max_columns, s.catalog_sample_rows) == (5, 5, 15, 50)
     assert s.ollama_structured_output is True
-
-
-# ---------------------------------------------------------------- .env / environment variables change them
 
 def test_environment_variables_change_every_presentation_setting(monkeypatch):
     s = fresh(
@@ -68,67 +58,53 @@ def test_environment_variables_change_every_presentation_setting(monkeypatch):
     assert (s.table_max_rows, s.table_max_columns) == (10, 8)
     assert (s.catalog_max_files, s.catalog_max_sheets, s.catalog_max_columns, s.catalog_sample_rows) == (2, 3, 10, 100)
 
-
 def test_the_model_can_also_be_set_with_the_lsn_prefix(monkeypatch):
     assert fresh(monkeypatch, LSN_PRESENTATION_MODEL="llama3.1:8b").presentation_model == "llama3.1:8b"
 
-
-@pytest.mark.parametrize(
-    "name, value",
-    [
-        ("SLIDE_TEMPERATURE", "9"),  # a typo like this would silently make slides random
-        ("OUTLINE_TEMPERATURE", "-1"),
-        ("OLLAMA_JSON_MAX_ATTEMPTS", "0"),  # zero attempts would never call the model
-        ("SLIDE_MAX_ATTEMPTS", "0"),
-        ("PRESENTATION_NUM_CTX", "10"),
-        ("TABLE_MAX_ROWS", "0"),
-        ("CATALOG_SAMPLE_ROWS", "0"),
-    ],
-)
+@pytest.mark.parametrize("name, value", [
+    ("SLIDE_TEMPERATURE", "9"),
+    ("OUTLINE_TEMPERATURE", "-1"),
+    ("OLLAMA_JSON_MAX_ATTEMPTS", "0"),
+    ("SLIDE_MAX_ATTEMPTS", "0"),
+    ("PRESENTATION_NUM_CTX", "10"),
+    ("TABLE_MAX_ROWS", "0"),
+    ("CATALOG_SAMPLE_ROWS", "0"),
+])
 def test_a_nonsense_value_stops_the_app_at_start_with_a_clear_error(monkeypatch, name, value):
     monkeypatch.setenv(name, value)
     with pytest.raises(ValidationError, match=name.lower()):
         Settings(_env_file=None)
 
-
-# ---------------------------------------------------------------- the code really reads them
-
 def test_the_json_client_takes_model_url_and_attempts_from_settings(monkeypatch):
-    monkeypatch.setattr(settings, "presentation_model", "qwen2.5:7b-instruct")
+    monkeypatch.setattr(settings, "ollama_model", "qwen2.5:7b-instruct")
     monkeypatch.setattr(settings, "ollama_base_url", "http://gpu-box:11434/")
     monkeypatch.setattr(settings, "ollama_json_max_attempts", 3)
     client = OllamaJSONClient()
     assert client.model_name == "qwen2.5:7b-instruct"
-    assert client.base_url == "http://gpu-box:11434"  # the trailing slash is dropped
+    assert client.base_url == "http://gpu-box:11434"
     assert client.max_attempts == 3
 
-
 def test_an_explicit_argument_still_beats_the_setting(monkeypatch):
-    monkeypatch.setattr(settings, "presentation_model", "from-settings:1b")
+    monkeypatch.setattr(settings, "ollama_model", "from-settings:1b")
     client = OllamaJSONClient(model_name="from-code:3b", base_url="http://other:11434")
     assert (client.model_name, client.base_url) == ("from-code:3b", "http://other:11434")
-
 
 def test_the_outline_asks_for_the_temperature_and_context_from_settings(scripted_llm, monkeypatch):
     monkeypatch.setattr(settings, "outline_temperature", 0.55)
     monkeypatch.setattr(settings, "presentation_num_ctx", 4096)
-    client = scripted_llm(
-        {
-            "presentation_title": "T",
-            "target_audience": "A",
-            "slides": [
-                {"slide_number": 1, "title": "Intro", "purpose": "p", "layout_type": "title"},
-                {"slide_number": 2, "title": "End", "purpose": "p", "layout_type": "bullet_points"},
-            ],
-        }
-    )
+    client = scripted_llm({
+        "presentation_title": "T",
+        "target_audience": "A",
+        "slides": [
+            {"slide_number": 1, "title": "Intro", "purpose": "p", "layout_type": "title"},
+            {"slide_number": 2, "title": "End", "purpose": "p", "layout_type": "bullet_points"},
+        ],
+    })
     options = PresentationCreate(topic="Sales review", num_slides=3, include_sources_slide=True).model_dump()
     generate_outline(client, options, chunks=[], data_names=[])
     assert client.calls[0]["temperature"] == 0.55 and client.calls[0]["num_ctx"] == 4096
 
-
 def test_module_constants_follow_the_environment_when_the_app_starts():
-    """The slide agent and the chart tool read their limits once, at import: check with a fresh process."""
     env = {
         "SLIDE_TEMPERATURE": "0.2",
         "PRESENTATION_NUM_CTX": "4096",
@@ -152,19 +128,18 @@ def test_module_constants_follow_the_environment_when_the_app_starts():
         "                  c.CATALOG_MAX_SHEETS, c.CATALOG_MAX_COLUMNS, c.CATALOG_SAMPLE_ROWS]))\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, env={**os.environ, **env}, timeout=60
+        [sys.executable, "-c", code], cwd=ROOT, capture_output=True,
+        text=True, env={**os.environ, **env}, timeout=60,
     )
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout.strip().splitlines()[-1]) == [0.2, 4096, 3, 20, 5, 36, 10, 8, 2, 3, 10, 100]
 
-
 def test_the_prompt_shows_the_table_limits_from_settings():
     from app.llm.prompts.slide_content import build_slide_prompt
     from app.tools import chart_tool
-
     prompt = build_slide_prompt(
-        presentation_title="D", audience="A", style=None, slide_number=2, title="T",
-        purpose="P", layout="table", sources={},
+        presentation_title="D", audience="A", style=None, slide_number=2,
+        title="T", purpose="P", layout="table", sources={},
     )
     assert f"up to {chart_tool.MAX_TABLE_COLUMNS} columns" in prompt
     assert f"up to {chart_tool.MAX_TABLE_ROWS} rows" in prompt

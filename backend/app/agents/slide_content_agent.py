@@ -1,56 +1,29 @@
-"""Task 2: writes the content of every slide, one slide at a time (Stage 2).
-
-Input : the outline from Task 1 (title, purpose and layout per slide) and, for each slide,
-        the source chunks it may use plus the notebook's spreadsheets.
-Output: PresentationContent, a validated slide JSON that Task 3 renders into a .pptx.
-
-What the LLM does : writes bullets, a subtitle and speaker notes, cites sources by id,
-                    and NAMES the sheet and columns for a chart or table.
-What the code does: checks every cited id, computes every chart / table value with pandas
-                    from the real file, trims the lists and repairs or drops anything invalid.
-"""
+"""Write presentation slide content, validate citations, and resolve spreadsheet data."""
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
-
 from app.agents.citation_validator import (
-    collect_source_ids,
-    find_invalid_source_ids,
-    strip_invalid_source_ids,
+    collect_source_ids, find_invalid_source_ids, strip_invalid_source_ids,
 )
 from app.core.config import settings
 from app.llm.ollama_client import OllamaJSONClient
 from app.llm.prompts.slide_content import build_slide_prompt
-# Week 6 presentation edits (ARC-06): layout names, aliases and bullet limits come from the registry.
 from app.schemas.layouts import DATA_LAYOUTS, DEFAULT_LAYOUT, find_layout, get_layout
 from app.schemas.slide_content import (
-    Bullet,
-    Citation,
-    PresentationContent,
-    SlideContent,
-    SlideContentDraft,
-    SourceChunk,
+    Bullet, Citation, PresentationContent, SlideContent, SlideContentDraft, SourceChunk,
 )
 from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 from app.tools.chart_tool import (
-    ChartToolError,
-    DataSource,
-    build_chart_data,
-    build_table_data,
-    clear_sheet_cache,
-    describe_sources,
+    ChartToolError, DataSource, build_chart_data, build_table_data,
+    clear_sheet_cache, describe_sources,
 )
 
 log = logging.getLogger(__name__)
-
-# Week 6 presentation edits (ARC-07): these three are set in core/config.py (.env), not here.
-TEMPERATURE = settings.slide_temperature  # low (0.1): slides must follow the sources, not be creative
-NUM_CTX = settings.presentation_num_ctx  # Ollama's default window is small; sources + schema + instructions need more
-MAX_ATTEMPTS = settings.slide_max_attempts  # one retry when the model cites ids that do not exist
+TEMPERATURE = settings.slide_temperature
+NUM_CTX = settings.presentation_num_ctx
+MAX_ATTEMPTS = settings.slide_max_attempts
 MAX_SOURCES_PER_SLIDE = 6
 MAX_SOURCE_CHARS = 900
-
 ChunksForSlide = Callable[[SlideOutlineItem], Sequence[SourceChunk]]
-
 
 def generate_presentation_content(
     outline: PresentationOutlineResponse,
@@ -62,27 +35,24 @@ def generate_presentation_content(
     client=None,
     on_progress: Optional[Callable[[int, int], None]] = None,
 ) -> PresentationContent:
-    """Write every slide of the outline, one LLM call per slide, in slide order."""
-    client = client or OllamaJSONClient()
+    """Write every slide in slide order."""
+    client = client if client is not None else OllamaJSONClient(model_name=settings.presentation_model)
     items = sorted(outline.slides, key=lambda s: s.slide_number)
     slides: List[SlideContent] = []
-    # Week 6 presentation edits (DAT-04): spreadsheets are read once per deck, then the cache is dropped.
     clear_sheet_cache()
     try:
         for done, item in enumerate(items, start=1):
             chunks = chunks_for_slide(item) if chunks_for_slide else []
-            slides.append(
-                generate_slide_content(
-                    item,
-                    presentation_title=outline.presentation_title,
-                    audience=outline.target_audience,
-                    style=style,
-                    user_request=user_request,
-                    chunks=chunks,
-                    data_files=data_files,
-                    client=client,
-                )
-            )
+            slides.append(generate_slide_content(
+                item,
+                presentation_title=outline.presentation_title,
+                audience=outline.target_audience,
+                style=style,
+                user_request=user_request,
+                chunks=chunks,
+                data_files=data_files,
+                client=client,
+            ))
             if on_progress:
                 on_progress(done, len(items))
     finally:
@@ -92,7 +62,6 @@ def generate_presentation_content(
         target_audience=outline.target_audience,
         slides=slides,
     )
-
 
 def generate_slide_content(
     item: SlideOutlineItem,
@@ -105,18 +74,16 @@ def generate_slide_content(
     data_files: Sequence[DataSource] = (),
     client=None,
 ) -> SlideContent:
-    """Content for ONE slide. Never raises because of the LLM: a failed slide gets a placeholder."""
-    client = client or OllamaJSONClient()
+    """Write one slide; model failures produce a placeholder."""
+    client = client if client is not None else OllamaJSONClient(model_name=settings.presentation_model)
     layout, warnings = _normalise_layout(item.layout_type)
-
     catalog = []
     if layout in DATA_LAYOUTS:
         catalog = describe_sources(data_files)
         if not catalog:
             warnings.append(f"No spreadsheet is available for a {layout} slide, so bullet_points was used.")
             layout = DEFAULT_LAYOUT
-
-    shown = _prepare_sources(chunks)  # {"S1": chunk, "S2": chunk ...}: the only ids that may be cited
+    shown = _prepare_sources(chunks)
 
     def prompt_with(feedback: str) -> str:
         return build_slide_prompt(
@@ -138,24 +105,19 @@ def generate_slide_content(
     for _ in range(MAX_ATTEMPTS):
         try:
             draft = client.generate_json(
-                prompt_with(feedback), SlideContentDraft, temperature=TEMPERATURE, num_ctx=NUM_CTX
+                prompt_with(feedback), SlideContentDraft,
+                temperature=TEMPERATURE, num_ctx=NUM_CTX,
             )
-        except Exception as exc:  # the client raises RuntimeError when it gets no valid JSON
+        except Exception as exc:
             log.exception("Slide %s: the LLM call failed", item.slide_number)
             if draft is None:
                 return _fallback_slide(item, layout, warnings, str(exc))
-            break  # keep the draft from the first attempt
+            break
         invalid = find_invalid_source_ids(draft.bullets + draft.right_bullets, shown.keys())
         if not invalid:
             break
         feedback = _correction(invalid, list(shown.keys()))
-
     return _finish_slide(item, layout, draft, shown, data_files, warnings)
-
-
-# ---------------------------------------------------------------------------
-# checking and finishing the LLM's draft (all deterministic)
-# ---------------------------------------------------------------------------
 
 def _finish_slide(
     item: SlideOutlineItem,
@@ -167,15 +129,13 @@ def _finish_slide(
 ) -> SlideContent:
     warnings = list(warnings)
     valid_ids = list(shown.keys())
-
     invalid = find_invalid_source_ids(draft.bullets + draft.right_bullets, valid_ids)
     if invalid:
         warnings.append("Removed source ids that were not supplied for this slide: " + ", ".join(invalid))
-
-    limit = get_layout(layout).max_bullets  # ARC-06: the same number the prompt asks for
+    limit = get_layout(layout).max_bullets
     bullets = _clean_bullets(strip_invalid_source_ids(draft.bullets, valid_ids), limit)
     right_bullets = _clean_bullets(strip_invalid_source_ids(draft.right_bullets, valid_ids), limit)
-    if get_layout(layout).columns < 2:  # only two-column layouts have a right column
+    if get_layout(layout).columns < 2:
         right_bullets = []
 
     chart = table = None
@@ -201,7 +161,6 @@ def _finish_slide(
         layout = DEFAULT_LAYOUT
         if not bullets:
             bullets = [Bullet(text=item.purpose)]
-
     if shown:
         uncited = sum(1 for b in bullets + right_bullets if not b.source_ids)
         if uncited:
@@ -225,39 +184,32 @@ def _finish_slide(
         warnings=[_tag(item, w) for w in warnings],
     )
 
-
 def _tag(item: SlideOutlineItem, message: str) -> str:
-    """Prefix a warning with the slide it belongs to, so a deck-level log is readable."""
     return f"Slide {item.slide_number} ('{item.title}'): {message}"
 
-
 def _fallback_slide(item: SlideOutlineItem, layout: str, warnings: List[str], reason: str) -> SlideContent:
-    """A minimal valid slide, so one failed LLM call does not lose the whole deck."""
     layout = "title" if layout == "title" else DEFAULT_LAYOUT
     return SlideContent(
         slide_number=item.slide_number,
         title=item.title,
         layout_type=layout,
         bullets=[] if layout == "title" else [Bullet(text=item.purpose)],
-        warnings=[_tag(item, w) for w in warnings]
-        + [_tag(item, f"The model call failed after {MAX_ATTEMPTS} attempt(s), so a placeholder slide was used. Reason: {reason}")],
+        warnings=[_tag(item, w) for w in warnings] + [
+            _tag(item, f"The model call failed after {MAX_ATTEMPTS} attempt(s), so a placeholder slide was used. Reason: {reason}")
+        ],
     )
 
-
 def _normalise_layout(raw: str) -> Tuple[str, List[str]]:
-    spec = find_layout(raw, selectable_only=True)  # ARC-06: aliases are shared with the renderer
+    spec = find_layout(raw, selectable_only=True)
     if spec is not None:
         return spec.name, []
     return DEFAULT_LAYOUT, [f"Unknown layout '{raw}', so {DEFAULT_LAYOUT} was used."]
 
-
 def _prepare_sources(chunks: Sequence[SourceChunk]) -> Dict[str, SourceChunk]:
-    """Give the chunks short ids (S1, S2 ...): a 7B model copies these far more reliably than real ids."""
     shown: Dict[str, SourceChunk] = {}
     for number, chunk in enumerate(list(chunks)[:MAX_SOURCES_PER_SLIDE], start=1):
         shown[f"S{number}"] = chunk.model_copy(update={"text": chunk.text[:MAX_SOURCE_CHARS]})
     return shown
-
 
 def _clean_bullets(bullets: Sequence[Bullet], limit: int) -> List[Bullet]:
     cleaned = []
@@ -267,11 +219,8 @@ def _clean_bullets(bullets: Sequence[Bullet], limit: int) -> List[Bullet]:
             cleaned.append(Bullet(text=text, source_ids=bullet.source_ids))
     return cleaned[:limit]
 
-
 def _real_ids(bullets: Sequence[Bullet], shown: Dict[str, SourceChunk]) -> List[Bullet]:
-    """Swap the short ids back for the real chunk ids, so the JSON points at real chunks."""
     return [Bullet(text=b.text, source_ids=[shown[a].chunk_id for a in b.source_ids]) for b in bullets]
-
 
 def _correction(invalid: List[str], valid: List[str]) -> str:
     allowed = ", ".join(valid) if valid else "none (there are no sources, so leave every source_ids list empty)"

@@ -1,19 +1,10 @@
-"""Business logic for presentations: create, generate in the background, edit, delete.
- 
-Generation chains the two finished AI tasks:
-  outline (Task 1: OllamaJSONClient + PresentationOutlineResponse)
-  -> slide content (Task 2: generate_presentation_content)
-  -> .pptx (Task 3: build_pptx).
-The chain lives in LocalLlmDeckGenerator, the single plug-in point of this file."""
- 
+"""Business logic for creating, generating, editing and deleting presentations."""
 import logging
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
- 
 from sqlalchemy.orm import Session
- 
 from app.agents.slide_content_agent import generate_presentation_content
 from app.artifacts import manager as artifacts
 from app.core.config import settings
@@ -21,18 +12,18 @@ from app.core.exceptions import ConflictError, InvalidFileError, NotFoundError
 from app.database import database
 from app.database.models import Document, Notebook, Presentation, PresentationStatus
 from app.jobs.manager import job_manager
+from app.llm.base import LlmClient
+from app.llm.errors import LlmUnavailableError
 from app.llm.ollama_client import OllamaJSONClient
+from app.presentations.outline import generate_outline
 from app.schemas.presentations import PresentationCreate
 from app.schemas.slide_content import PresentationContent
 from app.services import presentation_context
 from app.tools.chart_tool import sources_from_documents
 from app.tools.pptx_tool import build_pptx
-from app.presentations.outline import generate_outline
-from app.llm.base import LlmClient
-from app.llm.errors import LlmUnavailableError
- 
+
 log = logging.getLogger(__name__)
- 
+
 class DeckGenerator(Protocol):
     def generate(
         self,
@@ -42,15 +33,17 @@ class DeckGenerator(Protocol):
         documents: list[Document],
         progress: Callable[[str], None],
     ) -> PresentationContent: ...
- 
- 
+
 class LocalLlmDeckGenerator:
-    """Task 1 (outline) + Task 2 (slide content) with the local model."""
- 
-    def __init__(self, client: LlmClient | None = None, check_ready: bool = True,):
-        self.client: LlmClient = (client if client is not None else OllamaJSONClient())
+    """Generate an outline and slide content using the selected presentation model."""
+
+    def __init__(self, client: LlmClient | None = None, check_ready: bool = True):
+        self.client: LlmClient = (
+            client if client is not None
+            else OllamaJSONClient(model_name=settings.presentation_model)
+        )
         self.check_ready = check_ready
- 
+
     def generate(self, *, notebook, options, documents, progress) -> PresentationContent:
         if self.check_ready:
             self.client.check_ready()
@@ -70,21 +63,17 @@ class LocalLlmDeckGenerator:
             client=self.client,
             on_progress=lambda done, count: progress(f"content {done}/{count}"),
         )
- 
- 
+
 def get_generator() -> DeckGenerator:
-    """The one place that decides how a deck is made (tests replace it)."""
+    """The composition point for presentation generation; tests replace this."""
     return LocalLlmDeckGenerator()
- 
- 
-# ------------------------------------------------------------------ helpers
+
 def _touch(db: Session, p: Presentation, **fields) -> None:
     for key, value in fields.items():
         setattr(p, key, value)
     p.updated_at = datetime.utcnow()
     db.commit()
- 
- 
+
 def _selected_documents(
     db: Session, notebook: Notebook, ids: list[int] | None
 ) -> list[Document]:
@@ -95,10 +84,9 @@ def _selected_documents(
     if len(found) != len(set(ids)):
         raise InvalidFileError("Some document_ids do not exist in this notebook.")
     return found
- 
- 
+
 def _render(p: Presentation, deck: PresentationContent) -> str:
-    """Draw the deck into data/artifacts and return the relative path."""
+    """Render the deck and return its relative artifact path."""
     options = p.options
     relative = artifacts.presentation_file(p.notebook_id, p.id)
     build_pptx(
@@ -109,8 +97,7 @@ def _render(p: Presentation, deck: PresentationContent) -> str:
         include_sources_slide=options.get("include_sources_slide", True),
     )
     return relative
- 
-# ------------------------------------------------------------------ use cases
+
 def create_presentation(
     db: Session, notebook: Notebook, data: PresentationCreate
 ) -> Presentation:
@@ -118,7 +105,7 @@ def create_presentation(
         raise InvalidFileError(
             f"num_slides cannot be more than {settings.max_presentation_slides}."
         )
-    _selected_documents(db, notebook, data.document_ids)  # fail fast on bad ids
+    _selected_documents(db, notebook, data.document_ids)
     p = Presentation(
         notebook_id=notebook.id,
         title=data.title or data.topic[:150],
@@ -129,16 +116,13 @@ def create_presentation(
     db.add(p)
     db.commit()
     db.refresh(p)
-    job_manager.submit(
-        run_generation, p.id
-    )  # returns at once; the work runs in the background
+    job_manager.submit(run_generation, p.id)
     db.refresh(p)
     return p
- 
- 
+
 def run_generation(presentation_id: int) -> None:
-    """Runs in the background worker: generate the deck, draw it, store the file."""
-    db = database.SessionLocal()  # a background job needs its OWN session
+    """Generate and render a presentation in a background worker."""
+    db = database.SessionLocal()
     try:
         p = db.get(Presentation, presentation_id)
         if p is None or p.status != PresentationStatus.PENDING:
@@ -154,8 +138,7 @@ def run_generation(presentation_id: int) -> None:
         _touch(db, p, stage="rendering", deck=deck.model_dump(mode="json"))
         relative = _render(p, deck)
         _touch(
-            db,
-            p,
+            db, p,
             status=PresentationStatus.COMPLETED,
             stage="done",
             file_path=relative,
@@ -166,18 +149,13 @@ def run_generation(presentation_id: int) -> None:
         db.rollback()
         p = db.get(Presentation, presentation_id)
         if p is not None:
-            message = (
-                str(exc)
-                if isinstance(exc, LlmUnavailableError)
-                else f"{type(exc).__name__}: {exc}"
-            )
+            message = str(exc) if isinstance(exc, LlmUnavailableError) else f"{type(exc).__name__}: {exc}"
             _touch(db, p, status=PresentationStatus.FAILED, error=message[:500])
     finally:
         db.close()
- 
- 
+
 def update_deck(db: Session, p: Presentation, deck: PresentationContent) -> Presentation:
-    """The user edited the slide JSON: draw the file again (no model involved)."""
+    """Render edited slide JSON without making model calls."""
     if p.status in (PresentationStatus.PENDING, PresentationStatus.RUNNING):
         raise ConflictError("The presentation is still being generated.")
     try:
@@ -185,8 +163,7 @@ def update_deck(db: Session, p: Presentation, deck: PresentationContent) -> Pres
     except Exception as exc:
         raise InvalidFileError(f"The deck could not be drawn: {exc}")
     _touch(
-        db,
-        p,
+        db, p,
         deck=deck.model_dump(mode="json"),
         file_path=relative,
         status=PresentationStatus.COMPLETED,
@@ -195,14 +172,12 @@ def update_deck(db: Session, p: Presentation, deck: PresentationContent) -> Pres
     )
     db.refresh(p)
     return p
- 
- 
+
 def get_deck(p: Presentation) -> PresentationContent:
     if not p.deck:
         raise ConflictError("The presentation has no slides yet.")
     return PresentationContent.model_validate(p.deck)
- 
- 
+
 def get_download(p: Presentation) -> Path:
     if p.status != PresentationStatus.COMPLETED or not p.file_path:
         raise ConflictError("The presentation is not ready yet.")
@@ -210,8 +185,7 @@ def get_download(p: Presentation) -> Path:
     if not path.is_file():
         raise NotFoundError("The presentation file is missing on the server.")
     return path
- 
- 
+
 def list_presentations(db: Session, notebook: Notebook) -> list[Presentation]:
     return (
         db.query(Presentation)
@@ -219,36 +193,28 @@ def list_presentations(db: Session, notebook: Notebook) -> list[Presentation]:
         .order_by(Presentation.id.desc())
         .all()
     )
- 
- 
+
 def delete_presentation(db: Session, p: Presentation) -> None:
     if p.file_path:
         artifacts.delete(p.file_path)
     db.delete(p)
     db.commit()
- 
- 
+
 def fail_interrupted_jobs() -> int:
-    """At start-up: jobs that were running when the server stopped will never finish."""
+    """Mark presentation jobs interrupted by a server restart as failed."""
     db = database.SessionLocal()
     try:
         stuck = (
             db.query(Presentation)
-            .filter(
-                Presentation.status.in_(
-                    [PresentationStatus.PENDING, PresentationStatus.RUNNING]
-                )
-            )
+            .filter(Presentation.status.in_([PresentationStatus.PENDING, PresentationStatus.RUNNING]))
             .all()
         )
         for p in stuck:
             _touch(
-                db,
-                p,
+                db, p,
                 status=PresentationStatus.FAILED,
                 error="Interrupted by a server restart.",
             )
         return len(stuck)
     finally:
         db.close()
-

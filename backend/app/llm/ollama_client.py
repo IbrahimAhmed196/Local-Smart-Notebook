@@ -1,48 +1,32 @@
-"""Task1: in presentation Ollama integration (Stage 2).om"""
+"""Reusable Ollama clients for validated JSON generation and plain-text chat."""
 import json
 import logging
+from typing import TypeVar
 import requests
 from pydantic import BaseModel, ValidationError
-from typing import TypeVar
-
 from app.core.config import settings
 from app.llm.errors import LlmUnavailableError
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
 
-# Week 6 presentation edits (LLM-01): the JSON client now has timeouts, separate error types,
-# a log line for every failed attempt, and a retry that tells the model what was wrong.
-# Week 6 presentation edits (ARC-07): the number of attempts is settings.ollama_json_max_attempts
-# (default 2 = first try + one retry with the validation error in the prompt).
-
-
 class OllamaError(RuntimeError):
-    """Base class: callers can catch this (or RuntimeError, as before) and show the message."""
-
+    """Base error raised by the Ollama JSON client."""
 
 class OllamaUnreachableError(OllamaError):
-    """Ollama is not running / not reachable, or the model is not installed."""
-
+    """Ollama is unreachable or the requested model is missing."""
 
 class OllamaTimeoutError(OllamaError):
-    """Ollama accepted the request but did not answer in time."""
-
+    """Ollama did not answer within the configured timeout."""
 
 class OllamaInvalidJSONError(OllamaError):
-    """The model answered with text that is not valid JSON."""
-
+    """The model returned invalid JSON."""
 
 class OllamaSchemaError(OllamaError):
-    """The model answered with valid JSON that does not match the expected schema."""
-
+    """The model returned JSON that does not match the requested schema."""
 
 class OllamaFormatRejectedError(OllamaError):
-    """Week 6 presentation edits (LLM-02): an old Ollama refused a JSON schema in "format".
-
-    generate_json catches it and repeats the request in the old format="json" mode; it never reaches callers.
-    """
-
+    """The server rejected a JSON schema in the format field."""
 
 class OllamaJSONClient:
     def __init__(
@@ -53,14 +37,14 @@ class OllamaJSONClient:
         read_timeout: float | None = None,
         structured_output: bool | None = None,
     ):
-        # Week 6 presentation edits (ARC-07): model, URL and attempts come from core/config.py (.env).
-        self.model_name = model_name or settings.presentation_model
+        # Features supply their own model; otherwise use the generic default.
+        self.model_name = model_name or settings.ollama_model
         self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.max_attempts = settings.ollama_json_max_attempts
-        # Week 6 presentation edits (LLM-02): True = send the real JSON schema in "format" so Ollama
-        # can only produce matching JSON. Set to False automatically if the server rejects it.
-        self.structured_output = settings.ollama_structured_output if structured_output is None else structured_output
-        # Counters for scripts/measure_json_retries.py: answers that were not valid JSON / not the schema.
+        self.structured_output = (
+            settings.ollama_structured_output
+            if structured_output is None else structured_output
+        )
         self.calls = 0
         self.bad_answers = 0
         self.timeout = (
@@ -77,7 +61,6 @@ class OllamaJSONClient:
             raise LlmUnavailableError(
                 f"Cannot reach Ollama at {self.base_url}. Start it with: ollama serve"
             ) from exc
-
         try:
             payload = reply.json()
             models = payload["models"]
@@ -90,12 +73,11 @@ class OllamaJSONClient:
             raise LlmUnavailableError(
                 "Ollama returned an unreadable model list. Check the Ollama server."
             ) from exc
-
         wanted = self.model_name
         if wanted not in names and f"{wanted}:latest" not in names:
             raise LlmUnavailableError(
                 f"The model '{wanted}' is not installed. Run: ollama pull {wanted}"
-            )    
+            )
 
     def generate_json(
         self,
@@ -106,7 +88,7 @@ class OllamaJSONClient:
     ) -> T:
         schema = response_schema.model_json_schema()
         system_prompt = (
-            f"You are an AI assistant that outputs strictly valid JSON matching this Pydantic schema: "
+            "You are an AI assistant that outputs strictly valid JSON matching this Pydantic schema: "
             f"{schema}"
         )
         options = {"temperature": temperature}
@@ -124,8 +106,6 @@ class OllamaJSONClient:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                # LLM-02: the schema itself constrains the answer (valid JSON, real enum values);
-                # "json" is the old mode that only promises syntactically valid JSON.
                 "format": schema if self.structured_output else "json",
                 "stream": False,
                 "options": options,
@@ -134,14 +114,12 @@ class OllamaJSONClient:
                 content = self._post(payload)
                 return self._parse(content, response_schema)
             except OllamaFormatRejectedError:
-                # LLM-02 fallback: an old server does not understand a schema in "format".
-                # Remember that, and repeat the same attempt in the old mode (it is not counted).
-                log.warning("Ollama does not accept a JSON schema in 'format' (old version?); using format='json'")
+                log.warning(
+                    "Ollama does not accept a JSON schema in 'format' (old version?); using format='json'"
+                )
                 self.structured_output = False
                 continue
             except (OllamaInvalidJSONError, OllamaSchemaError) as exc:
-                # The model can fix this if it is told what was wrong; asking again with the
-                # identical prompt would usually give the identical mistake.
                 log.warning("Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc)
                 self.bad_answers += 1
                 attempt += 1
@@ -151,22 +129,19 @@ class OllamaJSONClient:
                     "Answer again with ONLY corrected JSON that matches the schema."
                 )
             except OllamaError as exc:
-                # Not running / timeout / HTTP error: retrying would only wait again.
                 log.warning("Ollama attempt %s/%s failed: %s", attempt, self.max_attempts, exc)
                 raise
-
-        # Keep the real reason (bad JSON or schema error) so it can be read in the logs and the UI.
         raise type(last_error)(
             f"The AI model did not return valid JSON after {self.max_attempts} attempts. "
             f"Last error: {type(last_error.__cause__ or last_error).__name__}: {str(last_error)[:600]}"
         ) from last_error.__cause__
 
     def _post(self, payload: dict) -> str:
-        """One HTTP call. Returns the model's text or raises a readable OllamaError."""
+        """Make one HTTP request and return the model's text."""
         try:
             response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=self.timeout)
             response.raise_for_status()
-        except requests.ConnectionError as exc:  # also covers a connect timeout
+        except requests.ConnectionError as exc:
             raise OllamaUnreachableError(
                 f"Cannot reach Ollama at {self.base_url}. Start it with: ollama serve"
             ) from exc
@@ -177,8 +152,9 @@ class OllamaJSONClient:
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else "unknown"
             if status == 400 and payload.get("format") != "json":
-                # LLM-02: 400 on a request that carries a schema = the server cannot read a schema here.
-                raise OllamaFormatRejectedError("The server does not accept a JSON schema in 'format'.") from exc
+                raise OllamaFormatRejectedError(
+                    "The server does not accept a JSON schema in 'format'."
+                ) from exc
             if status == 404:
                 raise OllamaUnreachableError(
                     f"The model '{self.model_name}' is not installed. Run: ollama pull {self.model_name}"
@@ -186,11 +162,12 @@ class OllamaJSONClient:
             raise OllamaError(f"The AI model returned an error (HTTP {status}).") from exc
         except requests.RequestException as exc:
             raise OllamaError(f"Could not call the AI model: {exc}") from exc
-
         try:
             return response.json()["message"]["content"]
         except (ValueError, KeyError, TypeError) as exc:
-            raise OllamaInvalidJSONError(f"Ollama sent an unreadable reply ({type(exc).__name__}).") from exc
+            raise OllamaInvalidJSONError(
+                f"Ollama sent an unreadable reply ({type(exc).__name__})."
+            ) from exc
 
     @staticmethod
     def _parse(content: str, response_schema: type[T]) -> T:
@@ -203,22 +180,17 @@ class OllamaJSONClient:
         except ValidationError as exc:
             raise OllamaSchemaError(f"The JSON does not match the schema: {exc}") from exc
 
-
 class OllamaChatClient:
-    """Plain-text chat with the local Ollama model (used by the notebook chat).
-
-    `messages` is the usual list of {"role": "system" | "user" | "assistant", "content": str}.
-    Raises LlmChatError with a readable message when Ollama or the model is not available.
-    """
+    """Reusable plain-text chat client."""
 
     def __init__(
         self,
-        model_name: str = "qwen2.5:3b",
-        base_url: str = "http://localhost:11434",
+        model_name: str | None = None,
+        base_url: str | None = None,
         timeout: float = 180,
     ):
-        self.model_name = model_name
-        self.base_url = base_url.rstrip("/")
+        self.model_name = model_name or settings.ollama_model
+        self.base_url = (base_url or settings.ollama_base_url).rstrip("/")
         self.timeout = timeout
 
     def chat(
@@ -248,7 +220,6 @@ class OllamaChatClient:
             raise LlmChatError("The AI model took too long to answer. Please try again.")
         except requests.RequestException as exc:
             raise LlmChatError(f"Could not call the AI model: {exc}")
-
         if response.status_code == 404:
             raise LlmChatError(
                 f"The model '{self.model_name}' is not installed. "
@@ -256,7 +227,6 @@ class OllamaChatClient:
             )
         if not response.ok:
             raise LlmChatError(f"The AI model returned an error ({response.status_code}).")
-
         try:
             answer = (response.json().get("message") or {}).get("content", "")
         except ValueError:
@@ -266,6 +236,5 @@ class OllamaChatClient:
             raise LlmChatError("The AI model returned an empty answer.")
         return answer
 
-
 class LlmChatError(RuntimeError):
-    """The chat model could not answer (Ollama down, model missing, timeout ...)."""
+    """The chat model could not answer."""
