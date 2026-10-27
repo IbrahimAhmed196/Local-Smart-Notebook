@@ -2,9 +2,12 @@
 
 from collections.abc import Sequence
 
+from app.core.config import settings
 from app.llm.base import LlmClient
 from app.llm.prompts.outline import OUTLINE_PROMPT
-from app.schemas.slide_content import SLIDE_LAYOUTS, SourceChunk
+# Week 6 presentation edits (ARC-06): which layouts need a spreadsheet comes from the layout registry.
+from app.schemas.layouts import DATA_LAYOUTS, SLIDE_LAYOUTS
+from app.schemas.slide_content import SourceChunk
 from app.schemas.slides import PresentationOutlineResponse
 
 
@@ -18,7 +21,7 @@ def generate_outline(
     layouts = [
         layout
         for layout in SLIDE_LAYOUTS
-        if data_names or layout not in ("chart", "table")
+        if data_names or layout not in DATA_LAYOUTS
     ]
 
     if data_names:
@@ -52,8 +55,9 @@ def generate_outline(
     outline = client.generate_json(
         prompt,
         PresentationOutlineResponse,
-        temperature=0.3,
-        num_ctx=8192,
+        # Week 6 presentation edits (ARC-07): both values come from core/config.py (.env).
+        temperature=settings.outline_temperature,
+        num_ctx=settings.presentation_num_ctx,
     )
 
     return clean_outline(
@@ -96,7 +100,7 @@ def clean_outline(
 
         if number == 1:
             layout = "title"
-        elif layout in ("chart", "table") and not has_data:
+        elif layout in DATA_LAYOUTS and not has_data:
             layout = "bullet_points"
 
         updates = {

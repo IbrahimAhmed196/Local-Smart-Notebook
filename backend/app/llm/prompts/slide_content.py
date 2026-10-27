@@ -5,17 +5,21 @@ Sources are shown to the model under short ids (S1, S2 ...) so it can cite them 
 """
 from typing import Dict, Optional, Sequence
 
+from app.schemas.layouts import get_layout
 from app.schemas.slide_content import SourceChunk
 from app.tools.chart_tool import SourceCatalog, MAX_TABLE_ROWS, MAX_TABLE_COLUMNS
 
+# Week 6 presentation edits (ARC-06): the bullet counts below are {min} / {max} placeholders that are filled
+# from the layout registry (schemas/layouts.py), so the prompt can never ask for a different number than the
+# code enforces. Adding a layout needs a rule here too (tests/test_layouts.py checks it).
 LAYOUT_RULES: Dict[str, str] = {
     "title": (
         "Write only a one-line \"subtitle\" that says what the presentation is about. "
         "Leave \"bullets\" and \"right_bullets\" empty."
     ),
-    "bullet_points": "Write 3 to 5 bullets in \"bullets\". Leave \"right_bullets\" empty.",
+    "bullet_points": "Write {min} to {max} bullets in \"bullets\". Leave \"right_bullets\" empty.",
     "two_columns": (
-        "Write 2 to 4 bullets in \"bullets\" (left column) and 2 to 4 in \"right_bullets\" (right column). "
+        "Write {min} to {max} bullets in \"bullets\" (left column) and {min} to {max} in \"right_bullets\" (right column). "
         "The two columns should complement or contrast each other."
     ),
     "chart": (
@@ -28,7 +32,7 @@ LAYOUT_RULES: Dict[str, str] = {
         'even when the PDF calls it "Revenue (EGP)". '
         'Put units in "title", for example "Revenue by region (EGP)". '
         'Never generate chart values; Python computes them from the spreadsheet. '
-        'Write 1 to 3 supporting bullets in "bullets". Leave "right_bullets" empty.'
+        'Write {min} to {max} supporting bullets in "bullets". Leave "right_bullets" empty.'
     ),
     "table": (
         'Populate the top-level "table" field with a non-null object; do not omit it. '
@@ -41,7 +45,7 @@ LAYOUT_RULES: Dict[str, str] = {
         'Do not append units to column identifiers. Put supported units in the title inside "table". '
         'Choose "max_rows" according to the requested records and the supplied table limits. '
         'Never generate cell values; Python reads them from the spreadsheet. '
-        'Write 1 to 3 supporting bullets in "bullets". Leave "right_bullets" empty.'
+        'Write {min} to {max} supporting bullets in "bullets". Leave "right_bullets" empty.'
     ),
 }
 
@@ -62,7 +66,7 @@ LAYOUT RULES:
 GENERAL RULES:
 - Use only facts that appear in the SOURCES. Do not invent facts, names or numbers.
 - For every bullet, list in "source_ids" the ids of the sources that support it (for example ["S1"]). Use only ids shown below.
-- Keep each bullet short: one idea, at most 18 words.
+- Keep each bullet short: one idea, at most {max_words} words.
 - Write in the same language as the SOURCES.
 - "speaker_notes": 2 to 4 sentences the presenter can say aloud for this slide.
 - Leave every field the layout does not use empty (or null).
@@ -137,6 +141,7 @@ def build_slide_prompt(
     catalog: Sequence[SourceCatalog] = (),
     feedback: str = "",
 ) -> str:
+    spec = get_layout(layout)
     return TEMPLATE.format(
         presentation_title=presentation_title,
         audience=audience,
@@ -146,7 +151,8 @@ def build_slide_prompt(
         purpose=purpose,
         layout=layout,
         user_request=user_request,
-        layout_rules=LAYOUT_RULES[layout],
+        layout_rules=LAYOUT_RULES[layout].format(min=spec.min_bullets, max=spec.max_bullets),
+        max_words=spec.max_words_per_bullet,
         max_table_columns=MAX_TABLE_COLUMNS,
         max_table_rows=MAX_TABLE_ROWS,
         sources=render_sources(sources),

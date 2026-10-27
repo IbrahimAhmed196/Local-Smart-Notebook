@@ -16,6 +16,7 @@ from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
  
+from app.schemas.layouts import DEFAULT_LAYOUT, find_layout
 from app.schemas.slide_content import Citation, PresentationContent, SlideContent
 from app.tools import pptx_charts
 from app.tools.pptx_themes import Theme, get_theme
@@ -44,17 +45,9 @@ LABELS = {  # the few words the renderer adds itself
     },
 }
  
-# the names Task 2 uses, plus a few names the renderer also accepts
-LAYOUT_ALIASES = {
-    "bullets": "bullet_points",
-    "bullet_point": "bullet_points",
-    "bullet": "bullet_points",
-    "conclusion": "closing",
-    "two_column": "two_columns",
-    "two_cols": "two_columns",
-    "comparison": "two_columns",
-}
-KNOWN_LAYOUTS = {"title", "bullet_points", "two_columns", "chart", "table", "closing"}
+# Week 6 presentation edits (ARC-06): layout names and aliases are no longer listed here. They come from
+# the registry in schemas/layouts.py, the same one the outline, the prompt and the slide agent read.
+# Every layout in the registry needs a render function in _RENDERERS (tests/test_layouts.py checks it).
  
  
 # ---------------------------------------------------------------- helpers
@@ -206,15 +199,12 @@ class Planned:
  
  
 def _layout_of(slide: SlideContent) -> str:
-    raw = (slide.layout_type or "").strip().lower().replace(" ", "_").replace("-", "_")
-    layout = LAYOUT_ALIASES.get(raw, raw)
-    if layout not in KNOWN_LAYOUTS:
-        layout = "bullet_points"  # the contract: an unknown layout is a bullet slide
-    if layout == "chart" and slide.chart is None:
-        layout = "bullet_points"
-    if layout == "table" and slide.table is None:
-        layout = "bullet_points"
-    return layout
+    spec = find_layout(slide.layout_type)
+    if spec is None:
+        return DEFAULT_LAYOUT  # the contract: an unknown layout is a bullet slide
+    if any(getattr(slide, field) is None for field in spec.required):
+        return DEFAULT_LAYOUT  # e.g. a chart slide without its chart data
+    return spec.name
  
  
 def _sources_lines(slides: list[SlideContent], lang: str = "en") -> list[str]:

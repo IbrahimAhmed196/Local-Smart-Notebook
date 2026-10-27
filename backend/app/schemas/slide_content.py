@@ -7,9 +7,9 @@ from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-# The layouts the slide writer (Task 2) and the renderer (Task 3) both understand.
-SLIDE_LAYOUTS = ("title", "bullet_points", "two_columns", "chart", "table")
-DEFAULT_LAYOUT = "bullet_points"
+# Week 6 presentation edits (ARC-06): the layouts live in schemas/layouts.py (one registry for the
+# schema, outline, prompt, agent and renderer). They are re-exported here so old imports keep working.
+from app.schemas.layouts import DEFAULT_LAYOUT, SLIDE_LAYOUTS  # noqa: F401
 
 
 # A 7B model often gets small things wrong (a string where a list is expected, "average" for "mean").

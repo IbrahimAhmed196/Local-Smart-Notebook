@@ -17,11 +17,12 @@ from app.agents.citation_validator import (
     find_invalid_source_ids,
     strip_invalid_source_ids,
 )
+from app.core.config import settings
 from app.llm.ollama_client import OllamaJSONClient
 from app.llm.prompts.slide_content import build_slide_prompt
+# Week 6 presentation edits (ARC-06): layout names, aliases and bullet limits come from the registry.
+from app.schemas.layouts import DATA_LAYOUTS, DEFAULT_LAYOUT, find_layout, get_layout
 from app.schemas.slide_content import (
-    DEFAULT_LAYOUT,
-    SLIDE_LAYOUTS,
     Bullet,
     Citation,
     PresentationContent,
@@ -41,20 +42,12 @@ from app.tools.chart_tool import (
 
 log = logging.getLogger(__name__)
 
-TEMPERATURE = 0.1  # low: slides must follow the sources, not be creative
-NUM_CTX = 8192  # Ollama's default window is small; sources + schema + instructions need more
-MAX_ATTEMPTS = 2  # one retry when the model cites ids that do not exist
+# Week 6 presentation edits (ARC-07): these three are set in core/config.py (.env), not here.
+TEMPERATURE = settings.slide_temperature  # low (0.1): slides must follow the sources, not be creative
+NUM_CTX = settings.presentation_num_ctx  # Ollama's default window is small; sources + schema + instructions need more
+MAX_ATTEMPTS = settings.slide_max_attempts  # one retry when the model cites ids that do not exist
 MAX_SOURCES_PER_SLIDE = 6
 MAX_SOURCE_CHARS = 900
-MAX_BULLETS = {"title": 0, "bullet_points": 6, "two_columns": 4, "chart": 3, "table": 3}  # per column
-DATA_LAYOUTS = ("chart", "table")
-LAYOUT_ALIASES = {
-    "bullets": "bullet_points",
-    "bullet_point": "bullet_points",
-    "bullet": "bullet_points",
-    "two_column": "two_columns",
-    "two_cols": "two_columns",
-}
 
 ChunksForSlide = Callable[[SlideOutlineItem], Sequence[SourceChunk]]
 
@@ -179,10 +172,10 @@ def _finish_slide(
     if invalid:
         warnings.append("Removed source ids that were not supplied for this slide: " + ", ".join(invalid))
 
-    limit = MAX_BULLETS[layout]
+    limit = get_layout(layout).max_bullets  # ARC-06: the same number the prompt asks for
     bullets = _clean_bullets(strip_invalid_source_ids(draft.bullets, valid_ids), limit)
     right_bullets = _clean_bullets(strip_invalid_source_ids(draft.right_bullets, valid_ids), limit)
-    if layout != "two_columns":
+    if get_layout(layout).columns < 2:  # only two-column layouts have a right column
         right_bullets = []
 
     chart = table = None
@@ -252,10 +245,9 @@ def _fallback_slide(item: SlideOutlineItem, layout: str, warnings: List[str], re
 
 
 def _normalise_layout(raw: str) -> Tuple[str, List[str]]:
-    layout = (raw or "").strip().lower().replace(" ", "_").replace("-", "_")
-    layout = LAYOUT_ALIASES.get(layout, layout)
-    if layout in SLIDE_LAYOUTS:
-        return layout, []
+    spec = find_layout(raw, selectable_only=True)  # ARC-06: aliases are shared with the renderer
+    if spec is not None:
+        return spec.name, []
     return DEFAULT_LAYOUT, [f"Unknown layout '{raw}', so {DEFAULT_LAYOUT} was used."]
 
 

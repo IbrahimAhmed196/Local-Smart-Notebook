@@ -6,7 +6,6 @@ import pytest
 
 from app.agents.slide_content_agent import (
     MAX_ATTEMPTS,
-    MAX_BULLETS,
     NUM_CTX,
     TEMPERATURE,
     generate_presentation_content,
@@ -14,6 +13,7 @@ from app.agents.slide_content_agent import (
 )
 from app.core.config import settings
 from app.llm import ollama_client
+from app.schemas.layouts import get_layout  # Week 6 presentation edits (ARC-06): limits come from the registry
 from app.schemas.slide_content import (
     SLIDE_LAYOUTS,
     Bullet,
@@ -161,7 +161,7 @@ def test_bullets_are_trimmed_to_the_layout_limit_and_blank_ones_dropped():
     many = draft(*[(f"point {i}", ["S1"]) for i in range(12)], ("   ", ["S1"]), ("• dotted", ["S1"]))
     many.bullets.insert(0, Bullet(text="   "))
     slide = write(item("bullet_points"), FakeClient.sequence(many))
-    assert len(slide.bullets) == MAX_BULLETS["bullet_points"] == 6
+    assert len(slide.bullets) == get_layout("bullet_points").max_bullets == 5  # ARC-06: was 6 in code but 3-5 in the prompt
     assert slide.bullets[0].text == "point 0"
     assert all(b.text.strip() for b in slide.bullets)
     dotted = write(item(), FakeClient.sequence(draft(("• dotted", ["S1"]))))
