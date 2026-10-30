@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON, Boolean, false
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.database import Base
@@ -77,11 +77,15 @@ class Message(Base):
     conversation = relationship("Conversation", back_populates="messages")
 
 class PresentationStatus:
-    """Lifecycle of a generated presentation."""
+    """Lifecycle of a generated presentation (docs/presentation-jobs.md)."""
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    CANCELLING = "CANCELLING"      # JOB-04
+    CANCELLED = "CANCELLED"        # JOB-04
+    INTERRUPTED = "INTERRUPTED"    # JOB-05
+
  
 class Presentation(Base):
     __tablename__ = "presentations"
@@ -94,6 +98,11 @@ class Presentation(Base):
     deck = Column(JSON, nullable=True)  # Task 2's deck JSON (PresentationContent)
     file_path = Column(String, nullable=True)  # relative to data/artifacts
     error = Column(Text, nullable=True)
+    outline = Column(JSON, nullable=True)
+    context = Column(JSON, nullable=True)
+    progress = Column(JSON, nullable=True)
+    cancel_requested = Column(Boolean, nullable=False, default=False, server_default=false())
+    slide_versions = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
  
