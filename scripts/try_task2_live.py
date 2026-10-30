@@ -68,6 +68,7 @@ check("no slide fell back to a placeholder", not failed, f"failed slides: {faile
 bad = []
 for s in deck.slides:
     allowed = {c.chunk_id for c in mock_chunks(s.slide_number)}
+    allowed |= {c.source_id for c in s.citations if c.text}  # Week 6 presentation edits (DAT-06): a data fact (s4-D2) is a citable source too
     cited = {i for b in s.bullets + s.right_bullets for i in b.source_ids} | {c.source_id for c in s.citations}
     if not cited <= allowed:
         bad.append((s.slide_number, sorted(cited - allowed)))

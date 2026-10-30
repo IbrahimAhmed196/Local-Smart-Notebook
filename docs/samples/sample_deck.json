@@ -49,7 +49,8 @@
           "source_id": "doc2-s2-a",
           "document_id": 2,
           "filename": "sales_report.pdf",
-          "page": 2
+          "page": 2,
+          "text": null
         }
       ],
       "warnings": []
@@ -95,13 +96,15 @@
           "source_id": "doc2-s3-a",
           "document_id": 2,
           "filename": "sales_report.pdf",
-          "page": 3
+          "page": 3,
+          "text": null
         },
         {
           "source_id": "doc2-s3-b",
           "document_id": 2,
           "filename": "sales_report.pdf",
-          "page": 4
+          "page": 4,
+          "text": null
         }
       ],
       "warnings": []
@@ -113,9 +116,21 @@
       "subtitle": null,
       "bullets": [
         {
-          "text": "North earns the most revenue",
+          "text": "North earns the most revenue: 200,000",
           "source_ids": [
-            "doc2-s4-a"
+            "s4-D4"
+          ]
+        },
+        {
+          "text": "Total revenue across the regions is 632,000",
+          "source_ids": [
+            "s4-D2"
+          ]
+        },
+        {
+          "text": "East is the lowest region at 122,000",
+          "source_ids": [
+            "s4-D5"
           ]
         }
       ],
@@ -146,10 +161,25 @@
       "table": null,
       "citations": [
         {
-          "source_id": "doc2-s4-a",
-          "document_id": 2,
-          "filename": "sales_report.pdf",
-          "page": 4
+          "source_id": "s4-D4",
+          "document_id": 1,
+          "filename": "sample_sales.csv",
+          "page": null,
+          "text": "Highest Revenue: North with 200,000 (31.6% of the total)."
+        },
+        {
+          "source_id": "s4-D2",
+          "document_id": 1,
+          "filename": "sample_sales.csv",
+          "page": null,
+          "text": "Total Revenue across the 4 categories shown: 632,000."
+        },
+        {
+          "source_id": "s4-D5",
+          "document_id": 1,
+          "filename": "sample_sales.csv",
+          "page": null,
+          "text": "Lowest Revenue: East with 122,000."
         }
       ],
       "warnings": []
@@ -161,9 +191,15 @@
       "subtitle": null,
       "bullets": [
         {
-          "text": "Laptops outsell phones in most regions",
+          "text": "The five rows shown add up to 425,000 in revenue",
           "source_ids": [
-            "doc2-s5-a"
+            "s5-D2"
+          ]
+        },
+        {
+          "text": "The biggest row is North at 120,000",
+          "source_ids": [
+            "s5-D3"
           ]
         }
       ],
@@ -208,10 +244,18 @@
       },
       "citations": [
         {
-          "source_id": "doc2-s5-a",
-          "document_id": 2,
-          "filename": "sales_report.pdf",
-          "page": 5
+          "source_id": "s5-D2",
+          "document_id": 1,
+          "filename": "sample_sales.csv",
+          "page": null,
+          "text": "Total Revenue of the 5 rows shown: 425,000."
+        },
+        {
+          "source_id": "s5-D3",
+          "document_id": 1,
+          "filename": "sample_sales.csv",
+          "page": null,
+          "text": "Highest Revenue in the rows shown: North with 120,000."
         }
       ],
       "warnings": []

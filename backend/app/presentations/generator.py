@@ -13,7 +13,7 @@ from app.presentations.outline import generate_outline
 from app.schemas.slide_content import PresentationContent
 from app.schemas.slides import PresentationOutlineResponse
 from app.services import presentation_context
-from app.tools.chart_tool import sources_from_documents
+from app.tools.chart_tool import describe_sources, sources_from_documents
 
 
 class LocalLlmDeckGenerator:
@@ -54,6 +54,8 @@ class LocalLlmDeckGenerator:
             options,
             sources.chunks,
             [d.filename for d in sources.data_files],
+            # Week 6 presentation edits (DAT-05): the outline also gets the description of the spreadsheets.
+            catalog=describe_sources(sources.data_files),
             cancel_event=cancel_event,
         )
 

@@ -6,6 +6,7 @@ from threading import Event
 from app.core.config import settings
 from app.llm.base import LlmClient
 from app.llm.prompts.outline import OUTLINE_PROMPT
+from app.llm.prompts.slide_content import render_data_files
 # Week 6 presentation edits (ARC-06): which layouts need a spreadsheet comes from the layout registry.
 from app.schemas.layouts import DATA_LAYOUTS, SLIDE_LAYOUTS
 from app.schemas.slide_content import SourceChunk
@@ -17,10 +18,15 @@ def generate_outline(
     options: dict,
     chunks: Sequence[SourceChunk],
     data_names: Sequence[str],
+    catalog: Sequence = (),
     *,
     cancel_event: Event | None = None,
 ) -> PresentationOutlineResponse:
-    """Generate an outline and apply the existing deterministic repairs."""
+    """Generate an outline and apply the existing deterministic repairs.
+
+    Week 6 presentation edits (DAT-05): catalog is what describe_sources() returns for the notebook's spreadsheets
+    (row counts, columns, labels, ranges). The outline step sees the same DATA FILES text as the slide writer, so it
+    plans charts and tables around columns that really exist."""
     layouts = [
         layout
         for layout in SLIDE_LAYOUTS
@@ -32,6 +38,12 @@ def generate_outline(
             f"- Use chart or table only to show numbers from: "
             f"{', '.join(data_names)}."
         )
+        catalog_text = render_data_files(catalog)
+        if catalog_text:  # DAT-05
+            data_note += (
+                "\n- For a chart or table slide, name in its purpose the columns of DATA FILES that it uses."
+                + catalog_text.rstrip("\n")
+            )
     else:
         data_note = "- There are no spreadsheets, so do not use chart or table."
 

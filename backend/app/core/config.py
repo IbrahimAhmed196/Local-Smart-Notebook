@@ -99,4 +99,12 @@ class Settings(BaseSettings):
     catalog_max_columns: int = Field(default=15, ge=1)
     catalog_sample_rows: int = Field(default=50, ge=1)
 
+    # Week 6 presentation edits (DAT-02 / DAT-05 / DAT-06): limits of the chart/table checks, the data catalog
+    # and the data facts.
+    chart_max_series: int = Field(default=4, ge=1)                # more value columns than this are cut (with a warning)
+    chart_scale_ratio_warning: float = Field(default=100, gt=1)   # warn when one series is this many times bigger than another
+    table_max_cell_chars: int = Field(default=60, ge=10)          # warn about table cells longer than this
+    catalog_example_labels: int = Field(default=5, ge=0)          # example labels shown for a text column (0 = none)
+    slide_data_facts: bool = True                                 # false = skip the extra model call that writes bullets from the data facts
+
 settings = Settings()

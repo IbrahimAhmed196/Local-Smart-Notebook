@@ -53,11 +53,14 @@ class SourceChunk(BaseModel):
 
 
 class Citation(BaseModel):
-    """Where a slide's facts come from (always one of the chunks given for that slide)."""
+    """Where a slide's facts come from (one of the chunks given for that slide, or one of its data facts)."""
     source_id: str
     document_id: int
     filename: str
     page: Optional[int] = None
+    # Week 6 presentation edits (DAT-06): set only for a data fact (source_id such as 's4-D2'): the fact itself,
+    # for example "Highest Revenue: North with 200,000". filename is then the chart's or table's source label.
+    text: Optional[str] = None
 
 
 class Bullet(BaseModel):

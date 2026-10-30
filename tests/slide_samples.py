@@ -109,11 +109,35 @@ def sample_drafts() -> Dict[int, SlideContentDraft]:
     }
 
 
+def sample_fact_drafts() -> Dict[int, SlideContentDraft]:
+    """Week 6 presentation edits (DAT-06): the second answer for the chart and table slides, written from DATA FACTS."""
+    return {
+        4: SlideContentDraft(
+            bullets=[
+                Bullet(text="North earns the most revenue: 200,000", source_ids=["D4"]),
+                Bullet(text="Total revenue across the regions is 632,000", source_ids=["D2"]),
+                Bullet(text="East is the lowest region at 122,000", source_ids=["D5"]),
+            ],
+            speaker_notes="This chart compares total revenue by region, computed from the sales file.",
+        ),
+        5: SlideContentDraft(
+            bullets=[
+                Bullet(text="The five rows shown add up to 425,000 in revenue", source_ids=["D2"]),
+                Bullet(text="The biggest row is North at 120,000", source_ids=["D3"]),
+            ],
+            speaker_notes="Here are the first rows of the sales data behind the previous chart.",
+        ),
+    }
+
+
 def sample_client() -> FakeClient:
-    drafts = sample_drafts()
-    return FakeClient.sequence(
-        *(drafts[number] for number in sorted(drafts))
-    )
+    drafts, facts = sample_drafts(), sample_fact_drafts()
+    answers = []
+    for number in sorted(drafts):
+        answers.append(drafts[number])
+        if number in facts:  # a chart / table slide is written a second time, from its data facts (DAT-06)
+            answers.append(facts[number])
+    return FakeClient.sequence(*answers)
 
 
 def build_sample_deck():

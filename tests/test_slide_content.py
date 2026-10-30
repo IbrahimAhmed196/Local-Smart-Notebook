@@ -184,7 +184,8 @@ def test_an_unknown_layout_becomes_bullet_points_with_a_warning():
 
 def test_chart_values_come_from_the_file_and_the_model_never_sees_them():
     spec = ChartSpec(chart_type="bar", title="Revenue", document_id=SALES_DOCUMENT_ID, x_column="region", y_columns=["revenue"])
-    client = FakeClient.sequence(draft(("North leads", ["S1"]), chart=spec))
+    # Week 6 presentation edits (DAT-06): a chart slide is written twice, the second time from the data facts
+    client = FakeClient.sequence(draft(("North leads", ["S1"]), chart=spec), draft(("North earns 200,000", ["D4"])))
     slide = write(item("chart", 4), client, data_files=[sales_source()])
 
     assert slide.layout_type == "chart" and slide.table is None
@@ -192,7 +193,9 @@ def test_chart_values_come_from_the_file_and_the_model_never_sees_them():
     assert slide.chart.series[0].values == [200000.0, 155000.0, 122000.0, 155000.0]  # computed by pandas
     prompt = client.calls[0]["prompt"]
     assert 'document_id=1, file "sample_sales.csv"' in prompt and "Region (text)" in prompt and "Revenue (number)" in prompt
-    assert "120000" not in prompt and "200000" not in prompt and "Laptops" not in prompt  # no cell values
+    # DAT-05: labels and ranges may be shown, but no computed value (a total per region) is in the first prompt
+    assert "200000" not in prompt and "155000" not in prompt and "DATA FACTS" not in prompt
+    assert "DATA FACTS" in client.calls[1]["prompt"] and "200,000" in client.calls[1]["prompt"]
 
 
 def test_a_chart_naming_a_missing_column_is_dropped_and_the_slide_still_works():
@@ -237,7 +240,8 @@ def test_a_data_slide_without_a_spreadsheet_falls_back_to_bullets(layout):
 
 def test_table_cells_come_from_the_file():
     spec = TableSpec(title="Rows", document_id=SALES_DOCUMENT_ID, columns=["Region", "Revenue"], max_rows=2)
-    slide = write(item("table", 5), FakeClient.sequence(draft(("Rows", ["S1"]), table=spec)), data_files=[sales_source()])
+    second = draft(("Two rows are shown", ["D1"]))  # DAT-06: the second answer, from the data facts
+    slide = write(item("table", 5), FakeClient.sequence(draft(("Rows", ["S1"]), table=spec), second), data_files=[sales_source()])
     assert slide.layout_type == "table" and slide.chart is None
     assert slide.table.columns == ["Region", "Revenue"]
     assert slide.table.rows == [["North", 120000], ["North", 80000]]

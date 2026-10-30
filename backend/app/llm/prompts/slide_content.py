@@ -7,7 +7,7 @@ from typing import Dict, Optional, Sequence
 
 from app.schemas.layouts import get_layout
 from app.schemas.slide_content import SourceChunk
-from app.tools.chart_tool import SourceCatalog, MAX_TABLE_ROWS, MAX_TABLE_COLUMNS
+from app.tools.chart_tool import ColumnProfile, DataFact, SourceCatalog, MAX_TABLE_ROWS, MAX_TABLE_COLUMNS
 
 # Week 6 presentation edits (ARC-06): the bullet counts below are {min} / {max} placeholders that are filled
 # from the layout registry (schemas/layouts.py), so the prompt can never ask for a different number than the
@@ -85,7 +85,7 @@ GENERAL RULES:
 
 SOURCES:
 {sources}
-{data_files}
+{data_files}{data_facts}
 
 FINAL CHECK BEFORE RETURNING JSON:
 For chart or table layouts, DATA FILES is the sole authority for spreadsheet identifiers.
@@ -114,16 +114,55 @@ def render_sources(sources: Dict[str, SourceChunk]) -> str:
     return "\n\n".join(lines)
 
 
+def _describe_column(name: str, kind: str, profile: Optional[ColumnProfile]) -> str:
+    """'Region (text) [4 distinct, e.g. North, South]'. The name and the kind keep their old form."""
+    text = f"{name} ({kind})"
+    if profile is None:
+        return text
+    detail = f"{profile.distinct} distinct"
+    if profile.examples:
+        detail += ", e.g. " + ", ".join(profile.examples)
+    if profile.low is not None:
+        detail += f", {profile.low} to {profile.high}"
+    return f"{text} [{detail}]"
+
+
+# Week 6 presentation edits (DAT-05): the catalog also shows the row count, the number of distinct values, example
+# labels for text columns, the range of number / date columns, and a note for everything left out by a limit.
+# The same text is given to the outline step (generate_outline).
 def render_data_files(catalog: Sequence[SourceCatalog]) -> str:
     if not catalog:
         return ""
-    lines = ["", "DATA FILES (spreadsheets you may use; column kinds are in brackets):"]
+    lines = [
+        "",
+        "DATA FILES (spreadsheets you may use; column kinds are in parentheses, details about the values are in square "
+        "brackets and are not part of the column name):",
+    ]
     for source in catalog:
         lines.append(f"- document_id={source.document_id}, file \"{source.filename}\"")
         for sheet in source.sheets:
-            columns = ", ".join(f"{name} ({kind})" for name, kind in sheet.columns)
+            columns = ", ".join(_describe_column(name, kind, sheet.profiles.get(name)) for name, kind in sheet.columns)
             label = f"sheet \"{sheet.name}\"" if sheet.name else "(single table)"
-            lines.append(f"    {label}: {columns}")
+            rows = f", {sheet.rows} rows" if sheet.rows else ""
+            lines.append(f"    {label}{rows}: {columns}")
+            if sheet.columns_left_out:
+                lines.append(f"    ({sheet.columns_left_out} more columns of this sheet are not listed)")
+        if source.sheets_left_out:
+            lines.append(f"    ({source.sheets_left_out} more sheets of this file are not listed)")
+    if getattr(catalog, "files_left_out", 0):
+        lines.append(f"- ({catalog.files_left_out} more spreadsheets are not listed)")
+    return "\n".join(lines) + "\n"
+
+
+# Week 6 presentation edits (DAT-06): the facts Python computed from the finished chart / table. They are shown as
+# citable sources D1, D2 ... and are the only numbers a bullet about the data may use.
+def render_data_facts(facts: Sequence[DataFact]) -> str:
+    if not facts:
+        return ""
+    lines = ["", "DATA FACTS (computed by Python from the spreadsheet; the chart or table is already built):"]
+    lines += [f"[{fact.fact_id}] {fact.text}" for fact in facts]
+    lines.append('Write the bullets and speaker notes now; leave "chart" and "table" null.')
+    lines.append('Bullets about the data may use only the numbers in DATA FACTS. Put the fact id in "source_ids", for example ["D1"].')
     return "\n".join(lines) + "\n"
 
 
@@ -139,6 +178,7 @@ def build_slide_prompt(
     layout: str,
     sources: Dict[str, SourceChunk],
     catalog: Sequence[SourceCatalog] = (),
+    facts: Sequence[DataFact] = (),
     feedback: str = "",
 ) -> str:
     spec = get_layout(layout)
@@ -157,5 +197,6 @@ def build_slide_prompt(
         max_table_rows=MAX_TABLE_ROWS,
         sources=render_sources(sources),
         data_files=render_data_files(catalog),
+        data_facts=render_data_facts(facts),
         feedback=feedback,
     )

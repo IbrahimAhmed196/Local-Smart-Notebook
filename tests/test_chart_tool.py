@@ -41,14 +41,16 @@ def chart(**kw):
     return ChartSpec(**{**base, **kw})
 
 
-def test_describe_sources_lists_sheets_and_column_kinds_but_never_values(xlsx):
+def test_describe_sources_lists_sheets_and_column_kinds_but_never_computed_values(xlsx):
     (source,) = describe_sources(xlsx)
     assert source.document_id == 1 and source.filename == "sales.xlsx"
     assert [s.name for s in source.sheets] == ["Q1", "Costs"]
     assert source.sheets[0].columns == [
         ("Region", "text"), ("Revenue", "number"), ("Units", "number"), ("Month", "date"),
     ]
-    assert "500" not in repr(source) and "North" not in repr(source)
+    # Week 6 presentation edits (DAT-05): the catalog now shows labels and ranges (tests/test_data_catalog.py),
+    # but a computed value (a sum or an average of Revenue: 1500, 300) never appears in it.
+    assert "1500" not in repr(source) and "300.0" not in repr(source)
 
 
 def test_describe_sources_reads_semicolon_csv_and_skips_unreadable_and_other_files(tmp_path):
