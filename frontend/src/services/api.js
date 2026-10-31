@@ -177,5 +177,8 @@ export const sendMessage = (id, content) =>
 // Stores the question AND asks the AI model (it sees this chat's history and the notebook's
 // uploaded files). Resolves to {user_message, assistant_message | null, error | null, sources: [filenames]}.
 // If the model is down, the question is still stored and `error` explains why.
-export const askAi = (id, content) =>
-  request(`/conversations/${id}/ask`, { method: 'POST', json: { content } })
+export const askAi = (id, content, feature = null) =>
+  request(`/conversations/${id}/ask`, {
+    method: 'POST',
+    json: { content, feature },
+  })

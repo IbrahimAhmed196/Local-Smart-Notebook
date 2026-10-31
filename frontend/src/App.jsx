@@ -136,6 +136,7 @@ export default function App() {
       if (seq !== openSeq.current) return
       setActiveConv(h.conversation)
       setMessages(h.messages)
+      
     } catch (err) {
       if (seq === openSeq.current) setChatError(err.message)
     } finally {
@@ -168,39 +169,77 @@ export default function App() {
 
   // Sends the question to the AI and shows its answer in the chat.
   // Resolves to true if the backend stored the question (the input is restored otherwise).
-  const send = async (text) => {
+
+  // Sends the question and keeps the selected feature with the message.
+  const send = async (text, feature = null) => {
     if (sending || activeId == null) return false
+
     setSending(true)
     setChatError('')
+
     const tempId = `pending-${Date.now()}`
     let shown = false
+
     try {
       let conv = activeConv
+
       if (!conv) {
-        // no chat selected: create one through the API, titled with the start of the message
         conv = await api.createConversation(activeId, text.slice(0, 40))
         setConversations((l) => [conv, ...l])
         setActiveConv(conv)
       }
-      // show the question at once; the answer can take a while on a local model
-      setMessages((m) => [...m, { id: tempId, sender: 'user', content: text, timestamp: new Date().toISOString(), pending: true }])
+
+      // Keep the original text and selected feature in the frontend state.
+      setMessages((m) => [
+        ...m,
+        {
+          id: tempId,
+          sender: 'user',
+          content: text,
+          feature,
+          timestamp: new Date().toISOString(),
+          pending: true,
+        },
+      ])
       shown = true
-      const res = await api.askAi(conv.id, text)
+
+      // The API still receives the original text in this frontend-only step.
+      const res = await api.askAi(conv.id, text, feature);
       setMessages((m) => {
-        const next = m.map((x) => (x.id === tempId ? res.user_message : x))
-        if (res.assistant_message) next.push({ ...res.assistant_message, sources: res.sources })
-        return next
-      })
+        return m.map((x) => {
+          if (x.id === tempId) {
+            return {
+              ...res.user_message,
+              feature: res.user_message.feature ?? feature,
+            };
+          }
+          return x;
+        }).concat(
+          res.assistant_message
+            ? [{
+                ...res.assistant_message,
+                sources: res.sources,
+              }]
+            : []
+        );
+      });      
+      
+
       if (res.error) setChatError(res.error)
+
       return true
     } catch (err) {
-      if (shown) setMessages((m) => m.filter((x) => x.id !== tempId))
+      if (shown) {
+        setMessages((m) => m.filter((x) => x.id !== tempId))
+      }
+
       setChatError(err.message)
       return false
     } finally {
       setSending(false)
     }
   }
+
 
   const renameConv = async (c) => {
     const title = window.prompt('Rename chat', c.title)?.trim()
@@ -344,7 +383,7 @@ export default function App() {
   }
 
   const active = notebooks.find((n) => n.id === activeId) || null
-
+  
   return (
     <div className="h-screen flex bg-black text-white">
       <Sidebar health={health} onCheckHealth={checkHealth}
