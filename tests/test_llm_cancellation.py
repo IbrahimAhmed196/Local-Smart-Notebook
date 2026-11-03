@@ -181,8 +181,8 @@ def test_stream_timeout_is_not_retried(mock_http):
 
 
 def test_slide_writer_propagates_control_errors():
-    from app.agents.slide_content_agent import generate_slide_content
-    from app.schemas.slides import SlideOutlineItem
+    from app.presentations.slide_content_agent import generate_slide_content
+    from app.presentations.schemas.slides import SlideOutlineItem
 
     fake = ScriptedLLMClient(GenerationCancelled("stop"))
     item = SlideOutlineItem(

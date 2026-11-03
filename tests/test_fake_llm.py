@@ -1,7 +1,7 @@
 import pytest
 from requests.exceptions import Timeout
 
-from app.schemas.slide_content import SlideContentDraft
+from app.presentations.schemas.slide_content import SlideContentDraft
 from tests.fake_llm import ScriptedLLMClient
 
 

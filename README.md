@@ -62,3 +62,5 @@ See [Presentation generation](docs/presentations.md) for a request example, edit
 
 ## Folders
 See [Backend structure](docs/backend-structure.md).
+
+Working on the presentation feature? See [Presentation architecture and developer guide](docs/presentation-architecture.md) (module map, how to add a layout, theme or chart type, how the tests are organised).

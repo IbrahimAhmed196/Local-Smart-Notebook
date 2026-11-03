@@ -12,6 +12,7 @@ From the repo root:
 "Bad answers" are replies that were not valid JSON or did not match the schema, i.e. the times the client
 had to ask again. It needs Ollama running with the model pulled; the tests do not need this script.
 """
+
 import argparse
 import sys
 import time
@@ -20,11 +21,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "backend")]
 
-from app.agents.slide_content_agent import generate_slide_content  # noqa: E402
 from app.llm.ollama_client import OllamaJSONClient  # noqa: E402
 from app.presentations.outline import generate_outline  # noqa: E402
+from app.presentations.slide_content_agent import generate_slide_content  # noqa: E402
 from app.schemas.presentations import PresentationCreate  # noqa: E402
-from tests.slide_samples import mock_chunks, mock_outline, sales_source  # noqa: E402
+from tests.presentations.slide_samples import mock_chunks, mock_outline, sales_source  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--runs", type=int, default=10, help="requests per mode (default 10)")
@@ -59,14 +60,17 @@ def one_run(client) -> bool:
 
 
 rows = []
-for label, structured in (("format=\"json\" (before)", False), ("JSON schema (after)", True)):
+for label, structured in (('format="json" (before)', False), ("JSON schema (after)", True)):
     client = OllamaJSONClient(model_name=args.model, base_url=args.base_url, structured_output=structured)
     print(f"{label}: model {client.model_name}")
     failed, started = 0, time.time()
     for number in range(1, args.runs + 1):
         ok = one_run(client)
         failed += 0 if ok else 1
-        print(f"  run {number}/{args.runs}: {'ok' if ok else 'FAILED'}  (bad answers so far: {client.bad_answers})", flush=True)
+        print(
+            f"  run {number}/{args.runs}: {'ok' if ok else 'FAILED'}  (bad answers so far: {client.bad_answers})",
+            flush=True,
+        )
     rows.append((label, client, failed, (time.time() - started) / args.runs))
 
 print(f"\nTarget: {args.target}, model: {rows[0][1].model_name}, {args.runs} runs per mode\n")
@@ -76,5 +80,7 @@ for label, client, failed, seconds in rows:
     rate = client.bad_answers / client.calls if client.calls else 0
     print(f"| {label} | {client.calls} | {client.bad_answers} | {rate:.0%} | {failed} | {seconds:.0f} |")
 if not rows[1][1].structured_output:
-    print("\nWARNING: this Ollama rejected the JSON schema, so the 'after' row really ran in the old mode. "
-          "Update Ollama (schemas need a recent version) and measure again.")
+    print(
+        "\nWARNING: this Ollama rejected the JSON schema, so the 'after' row really ran in the old mode. "
+        "Update Ollama (schemas need a recent version) and measure again."
+    )

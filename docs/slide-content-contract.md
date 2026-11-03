@@ -1,15 +1,15 @@
-# Slide content (Task 2): what it takes, what it returns
+# Slide content: what it takes, what it returns
 
-`agents/slide_content_agent.py` turns the **outline** (Task 1) into the **deck JSON** that the renderer (Task 3) draws.
+`presentations/slide_content_agent.py` turns the **outline** (from `presentations/outline.py`) into the **deck JSON** that the renderer (`presentations/pptx/`) draws.
 It writes one slide at a time with the local model (Qwen2.5-7B-Instruct through `llm/ollama_client.py`, temperature 0.1).
 
 ```python
-from app.agents.slide_content_agent import generate_presentation_content
+from app.presentations.slide_content_agent import generate_presentation_content
 
 deck = generate_presentation_content(
-    outline,                       # PresentationOutlineResponse from Task 1
+    outline,                       # PresentationOutlineResponse from the outline step
     chunks_for_slide=my_adapter,   # callable(SlideOutlineItem) -> list[SourceChunk]   (RAG, or plain text for now)
-    data_files=sources_from_documents(spreadsheet_documents),   # CSV/XLSX of the notebook (tools/chart_tool.py)
+    data_files=sources_from_documents(spreadsheet_documents),   # CSV/XLSX of the notebook (presentations/data/)
     style="professional",          # optional
     on_progress=lambda done, total: ...,   # optional: lets a background job report "slide 3 of 8"
 )                                  # -> PresentationContent
@@ -18,18 +18,18 @@ deck = generate_presentation_content(
 ## Who does what
 | The LLM | The code |
 |---|---|
-| writes subtitle, bullets, speaker notes | checks that every cited id is one of the sources given for that slide (`agents/citation_validator.py`), retries once, then removes what is still invalid |
+| writes subtitle, bullets, speaker notes | checks that every cited id is one of the sources given for that slide (`presentations/citation_validator.py`), retries once, then removes what is still invalid |
 | cites sources with short ids (`S1`, `S2` ...) | maps them back to the real `chunk_id`s and builds the slide's `citations` list |
-| **names** the file, sheet and columns of a chart or table | reads the real file with pandas and computes every number (`tools/chart_tool.py`); the model sees a short description of each column (below) and, after the chart or table is built, the data facts (below), but never a number it could use without a citation |
+| **names** the file, sheet and columns of a chart or table | reads the real file with pandas and computes every number (`presentations/data/`); the model sees a short description of each column (below) and, after the chart or table is built, the data facts (below), but never a number it could use without a citation |
 
 A wrong chart or table choice (unknown file, sheet or column) is dropped and the slide becomes `bullet_points`; a failed LLM call gives a
 placeholder slide. Either way the deck is still complete, and the reason is written in the slide's `warnings`.
 
-## Chart and table checks (`check_chart`, `check_table` in `tools/chart_tool.py`)
+## Chart and table checks (`check_chart` in `presentations/data/chart_builder.py`, `check_table` in `presentations/data/table_builder.py`)
 *Week 6 presentation edits (DAT-02).* The checks return a `CheckResult`: the chart (or table) plus a list of `Issue(code, severity, message, hint)`
 instead of stopping at the first problem. An **error** means nothing can be drawn (`result.ok` is false, `result.data` is `None`; this is what
 GEN-06 can feed back to the model). A **warning** means it is drawn, but the reader should know; the slide writer adds the message and the hint to
-the slide's `warnings`. `build_chart_data` / `build_table_data` still exist and raise `ChartToolError` (now with `.code` and `.hint`) on an error.
+the slide's `warnings`. `build_chart_data` / `build_table_data` still exist and raise `SlideDataError` (with `.code` and `.hint`; it was called `ChartToolError` before ARC-09) on an error.
 
 | code | severity | rule |
 |---|---|---|
@@ -85,10 +85,10 @@ that cites a fact but quotes a number found in none of its cited sources gets a 
 - if the second call fails, the first bullets are kept and a warning says so. The facts are plain `DataFact(fact_id, text)` objects, ready for
   OUT-04 (stat highlight) to reuse.
 
-## Layouts (the registry in `schemas/layouts.py`)
+## Layouts (the registry in `presentations/schemas/layouts.py`)
 *Week 6 presentation edits (ARC-06).* One registry (`LAYOUTS`) holds every layout's name, aliases, bullet limits, word limit and required
 fields. The schema, the outline, the prompt, the slide agent and the renderer all read it, so they cannot disagree any more
-(`SLIDE_LAYOUTS` in `schemas/slide_content.py` is just the registry's list of layouts the model may choose).
+(`SLIDE_LAYOUTS` in `presentations/schemas/slide_content.py` is just the registry's list of layouts the model may choose).
 
 | layout | fields used | bullets (the prompt asks for this, the agent trims to the max) | aliases |
 |---|---|---|---|
@@ -103,13 +103,13 @@ fields. The schema, the outline, the prompt, the slide agent and the renderer al
 Every bullet may have at most 18 words (also from the registry). Every slide also has `speaker_notes`, `citations` and `warnings`.
 The renderer treats an unknown layout, or a `chart` / `table` slide without its data, as `bullet_points`.
 
-**To add a layout:** add one `LayoutSpec` in `schemas/layouts.py`, one rule in `LAYOUT_RULES` (`llm/prompts/slide_content.py`) and one
-render function in `_RENDERERS` (`tools/pptx_tool.py`). `tests/test_layouts.py` fails if the rule or the renderer is missing.
+**To add a layout:** add one `LayoutSpec` in `presentations/schemas/layouts.py`, one rule in `LAYOUT_RULES` (`presentations/prompts/slide_content.py`) and one
+render function in `presentations/pptx/layouts/`. `tests/presentations/test_layouts.py` fails if the rule or the renderer is missing. The tests and sample files that change with a new public layout are listed in the step-by-step guide, `docs/presentation-architecture.md`.
 
-## Sample files (Task 3 can start from these)
+## Sample files (the renderer tests start from these)
 `docs/samples/sample_outline.json`, `sample_deck.json` (one slide of every layout) and `sample_sales.csv` (the file behind the chart and table).
-They are produced by `tests/slide_samples.py`; a test fails if the schema or the agent changes without rewriting them
-(`python tests/slide_samples.py`).
+They are produced by `tests/presentations/slide_samples.py`; a test fails if the schema or the agent changes without rewriting them
+(`python tests/presentations/slide_samples.py`, with `PYTHONPATH=.:backend` from the repository root).
 
 ## Running with the real model
 ```bash

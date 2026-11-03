@@ -1,7 +1,10 @@
 """Presentation CRUD/use cases; generation jobs are submitted to the runner."""
+
 from datetime import datetime
 from pathlib import Path
+
 from sqlalchemy.orm import Session
+
 from app.artifacts import manager as artifacts
 from app.core.config import settings
 from app.core.exceptions import ConflictError, InvalidFileError, NotFoundError
@@ -10,17 +13,13 @@ from app.jobs.manager import job_manager
 from app.presentations import runner
 from app.presentations.rendering import render_deck
 from app.presentations.repository import selected_documents
+from app.presentations.schemas.slide_content import PresentationContent
 from app.schemas.presentations import PresentationCreate
-from app.schemas.slide_content import PresentationContent
 
 
-def create_presentation(
-    db: Session, notebook: Notebook, data: PresentationCreate
-) -> Presentation:
+def create_presentation(db: Session, notebook: Notebook, data: PresentationCreate) -> Presentation:
     if data.num_slides > settings.max_presentation_slides:
-        raise InvalidFileError(
-            f"num_slides cannot be more than {settings.max_presentation_slides}."
-        )
+        raise InvalidFileError(f"num_slides cannot be more than {settings.max_presentation_slides}.")
     selected_documents(db, notebook, data.document_ids)
     p = Presentation(
         notebook_id=notebook.id,
@@ -37,9 +36,7 @@ def create_presentation(
     return p
 
 
-def update_deck(
-    db: Session, p: Presentation, deck: PresentationContent
-) -> Presentation:
+def update_deck(db: Session, p: Presentation, deck: PresentationContent) -> Presentation:
     """Render a manually edited deck without calling the model."""
     if p.status in (PresentationStatus.PENDING, PresentationStatus.RUNNING):
         raise ConflictError("The presentation is still being generated.")
@@ -75,12 +72,7 @@ def get_download(p: Presentation) -> Path:
 
 
 def list_presentations(db: Session, notebook: Notebook) -> list[Presentation]:
-    return (
-        db.query(Presentation)
-        .filter(Presentation.notebook_id == notebook.id)
-        .order_by(Presentation.id.desc())
-        .all()
-    )
+    return db.query(Presentation).filter(Presentation.notebook_id == notebook.id).order_by(Presentation.id.desc()).all()
 
 
 def delete_presentation(db: Session, p: Presentation) -> None:

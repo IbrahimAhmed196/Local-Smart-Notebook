@@ -8,10 +8,10 @@ from pydantic import BaseModel
 
 from app.llm import ollama_client
 from app.llm.ollama_client import OllamaError, OllamaInvalidJSONError, OllamaJSONClient
-from app.schemas.layouts import SLIDE_LAYOUTS
-from app.schemas.slide_content import SlideContentDraft
-from app.schemas.slides import PresentationOutlineResponse
-from tests.slide_samples import SAMPLES_DIR
+from app.presentations.schemas.layouts import SLIDE_LAYOUTS
+from app.presentations.schemas.slide_content import SlideContentDraft
+from app.presentations.schemas.slides import PresentationOutlineResponse
+from tests.presentations.slide_samples import SAMPLES_DIR
 
 
 class Answer(BaseModel):

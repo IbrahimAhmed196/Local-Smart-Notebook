@@ -63,7 +63,7 @@ def test_readiness_failure_stops_before_document_processing(scripted_llm, monkey
     check = Mock(side_effect=LlmUnavailableError("Model unavailable"))
     monkeypatch.setattr(client, "check_ready", check)
     build_chunks = Mock()
-    monkeypatch.setattr(deck_generation.presentation_context, "build_chunks", build_chunks)
+    monkeypatch.setattr(deck_generation.chunks, "build_chunks", build_chunks)
     progress = Mock()
     generator = deck_generation.LocalLlmDeckGenerator(client=client)
 

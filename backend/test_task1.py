@@ -1,5 +1,5 @@
 from app.llm.ollama_client import OllamaJSONClient
-from app.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.slides import PresentationOutlineResponse
 
 def test_outline_generation():
     client = OllamaJSONClient()

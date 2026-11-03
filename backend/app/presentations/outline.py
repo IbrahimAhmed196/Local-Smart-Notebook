@@ -5,12 +5,13 @@ from threading import Event
 
 from app.core.config import settings
 from app.llm.base import LlmClient
-from app.llm.prompts.outline import OUTLINE_PROMPT
-from app.llm.prompts.slide_content import render_data_files
+from app.presentations.prompts.outline import OUTLINE_PROMPT
+from app.presentations.prompts.slide_content import render_data_files
+
 # Week 6 presentation edits (ARC-06): which layouts need a spreadsheet comes from the layout registry.
-from app.schemas.layouts import DATA_LAYOUTS, SLIDE_LAYOUTS
-from app.schemas.slide_content import SourceChunk
-from app.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.layouts import DATA_LAYOUTS, SLIDE_LAYOUTS
+from app.presentations.schemas.slide_content import SourceChunk
+from app.presentations.schemas.slides import PresentationOutlineResponse
 
 
 def generate_outline(
@@ -27,17 +28,10 @@ def generate_outline(
     Week 6 presentation edits (DAT-05): catalog is what describe_sources() returns for the notebook's spreadsheets
     (row counts, columns, labels, ranges). The outline step sees the same DATA FILES text as the slide writer, so it
     plans charts and tables around columns that really exist."""
-    layouts = [
-        layout
-        for layout in SLIDE_LAYOUTS
-        if data_names or layout not in DATA_LAYOUTS
-    ]
+    layouts = [layout for layout in SLIDE_LAYOUTS if data_names or layout not in DATA_LAYOUTS]
 
     if data_names:
-        data_note = (
-            f"- Use chart or table only to show numbers from: "
-            f"{', '.join(data_names)}."
-        )
+        data_note = f"- Use chart or table only to show numbers from: {', '.join(data_names)}."
         catalog_text = render_data_files(catalog)
         if catalog_text:  # DAT-05
             data_note += (
@@ -49,9 +43,7 @@ def generate_outline(
 
     excerpts = (
         "\n".join(
-            f"- ({chunk.filename}"
-            f"{f', page {chunk.page}' if chunk.page else ''}) "
-            f"{chunk.text[:300]}"
+            f"- ({chunk.filename}{f', page {chunk.page}' if chunk.page else ''}) {chunk.text[:300]}"
             for chunk in chunks[:6]
         )
         or "(No document text was found. Use the topic only.)"
@@ -99,19 +91,12 @@ def clean_outline(
         raise ValueError("The model returned an outline without any slides.")
 
     if len(slides) != expected:
-        raise ValueError(
-            f"Expected {expected} outline slides, received {len(slides)}."
-        )
+        raise ValueError(f"Expected {expected} outline slides, received {len(slides)}.")
 
     fixed = []
 
     for number, slide in enumerate(slides, start=1):
-        layout = (
-            (slide.layout_type or "")
-            .strip()
-            .lower()
-            .replace(" ", "_")
-        )
+        layout = (slide.layout_type or "").strip().lower().replace(" ", "_")
 
         if number == 1:
             layout = "title"
@@ -124,19 +109,13 @@ def clean_outline(
         }
 
         if number == 1:
-            updates["title"] = (
-                options.get("title") or outline.presentation_title
-            )
+            updates["title"] = options.get("title") or outline.presentation_title
 
         fixed.append(slide.model_copy(update=updates))
 
     return PresentationOutlineResponse(
-        presentation_title=(
-            options.get("title") or outline.presentation_title
-        ),
-        target_audience=(
-            outline.target_audience or options["audience"]
-        ),
+        presentation_title=(options.get("title") or outline.presentation_title),
+        target_audience=(outline.target_audience or options["audience"]),
         slides=fixed,
     )
 
@@ -148,8 +127,6 @@ def _outline_slide_count(options: dict) -> int:
     count = total - reserved
 
     if count < 2:
-        raise ValueError(
-            "Allow at least two content slides plus the optional Sources slide."
-        )
+        raise ValueError("Allow at least two content slides plus the optional Sources slide.")
 
     return count

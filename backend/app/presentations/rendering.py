@@ -1,8 +1,9 @@
 """Render a presentation deck using its saved options."""
+
 from app.artifacts import manager as artifacts
 from app.database.models import Presentation
-from app.schemas.slide_content import PresentationContent
-from app.tools.pptx_tool import build_pptx
+from app.presentations.pptx import build_pptx
+from app.presentations.schemas.slide_content import PresentationContent
 
 
 def render_deck(p: Presentation, deck: PresentationContent) -> str:

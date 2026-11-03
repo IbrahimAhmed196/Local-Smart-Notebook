@@ -1,7 +1,10 @@
 """Background presentation execution, progress persistence, and failure recovery."""
+
 import logging
 from datetime import datetime
+
 from sqlalchemy.orm import Session
+
 from app.database import database
 from app.database.models import Presentation, PresentationStatus
 from app.presentations import generator as deck_generation
@@ -26,9 +29,7 @@ def _prepare(db, presentation_id):
     _touch(db, p, status=PresentationStatus.RUNNING, stage="starting")
     documents = selected_documents(db, p.notebook, p.options.get("document_ids"))
     generator = deck_generation.get_generator()
-    generator.prepare(
-        notebook=p.notebook, options=p.options, documents=documents
-    )
+    generator.prepare(notebook=p.notebook, options=p.options, documents=documents)
     return p, documents, generator
 
 
@@ -59,7 +60,8 @@ def _render(db, p, deck):
 
 def _finish(db, p, relative):
     _touch(
-        db, p,
+        db,
+        p,
         status=PresentationStatus.COMPLETED,
         stage="done",
         file_path=relative,
@@ -100,15 +102,22 @@ def fail_interrupted_jobs() -> int:
     """Preserve the existing restart policy until the job-status tasks replace it."""
     db = database.SessionLocal()
     try:
-        stuck = db.query(Presentation).filter(
-            Presentation.status.in_([
-                PresentationStatus.PENDING,
-                PresentationStatus.RUNNING,
-            ])
-        ).all()
+        stuck = (
+            db.query(Presentation)
+            .filter(
+                Presentation.status.in_(
+                    [
+                        PresentationStatus.PENDING,
+                        PresentationStatus.RUNNING,
+                    ]
+                )
+            )
+            .all()
+        )
         for p in stuck:
             _touch(
-                db, p,
+                db,
+                p,
                 status=PresentationStatus.FAILED,
                 error="Interrupted by a server restart.",
             )

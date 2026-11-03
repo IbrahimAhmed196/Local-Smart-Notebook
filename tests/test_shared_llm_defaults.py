@@ -1,10 +1,10 @@
 """Feature model settings must not leak into shared client defaults."""
 from unittest.mock import Mock
 import pytest
-from app.agents import slide_content_agent as agent
+from app.presentations import slide_content_agent as agent
 from app.core.config import Settings, settings
 from app.llm.ollama_client import OllamaChatClient, OllamaJSONClient
-from app.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
 from app.services import chat_service
 from tests.fake_llm import ScriptedLLMClient
 from app.presentations import generator as deck_generation
