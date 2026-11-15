@@ -16,7 +16,7 @@ from app.presentations.schemas.layouts import (
     get_layout,
 )
 from app.presentations.schemas.slide_content import Bullet, SlideContent, SlideContentDraft
-from app.presentations.schemas.slides import SlideOutlineItem
+from app.presentations.schemas.outline import SlideOutlineItem
 from app.presentations.slide_content_agent import _normalise_layout, generate_slide_content
 from tests.presentations.slide_samples import FakeClient, mock_chunks
 

@@ -10,7 +10,7 @@ from typing import Dict, List
 
 from app.presentations.data import DataSource
 from app.presentations.schemas.slide_content import Bullet, ChartSpec, SlideContentDraft, SourceChunk, TableSpec
-from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 from tests.fake_llm import ScriptedLLMClient as FakeClient
 
 SAMPLES_DIR = Path(__file__).resolve().parents[2] / "docs" / "samples"

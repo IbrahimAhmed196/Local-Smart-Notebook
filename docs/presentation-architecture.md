@@ -199,7 +199,7 @@ code, not exercised.
 | chart / table size limits, data catalog limits, check thresholds | `presentations/data/limits.py` (the settings-backed ones come from `core/config.py` / `.env`) |
 | model, temperature, context size, retries of the slide writer | `core/config.py`: `presentation_model`, `slide_temperature`, `presentation_num_ctx`, `slide_max_attempts` |
 | bullet counts and word limit per layout | the `LayoutSpec` in `presentations/schemas/layouts.py` |
-| skip the extra "data facts" model call | `slide_data_facts` in `core/config.py` |
+| skip the extra "data facts" model call | `presentation_slide_data_facts` in `core/config.py` |
 
 In tests, patch the limit on the module that holds it: `monkeypatch.setattr(limits, "MAX_TABLE_ROWS", 3)`.
 

@@ -14,7 +14,7 @@ from app.presentations.data import describe_sources, sources_from_documents
 from app.presentations.interfaces import DeckGenerator, GenerationSources, ProgressCallback
 from app.presentations.outline import generate_outline
 from app.presentations.schemas.slide_content import PresentationContent
-from app.presentations.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.outline import PresentationOutlineResponse
 from app.presentations.slide_content_agent import generate_presentation_content
 
 

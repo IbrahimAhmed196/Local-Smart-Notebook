@@ -4,13 +4,13 @@ import logging
 
 import pytest
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.llm import ollama_client
 from app.llm.ollama_client import OllamaError, OllamaInvalidJSONError, OllamaJSONClient
 from app.presentations.schemas.layouts import SLIDE_LAYOUTS
 from app.presentations.schemas.slide_content import SlideContentDraft
-from app.presentations.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.outline import PresentationOutlineResponse
 from tests.presentations.slide_samples import SAMPLES_DIR
 
 
@@ -251,5 +251,6 @@ def test_an_outline_with_an_invented_layout_is_not_allowed_by_the_schema():
     }
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(bad, PresentationOutlineResponse.model_json_schema())
-    # ... while the pydantic model still accepts any string, so the old mode and the cleaning code keep working
-    assert PresentationOutlineResponse.model_validate(bad).slides[0].layout_type == "carousel"
+    # OUT-01: the pydantic model is strict as well now, and its message lists the allowed layout names
+    with pytest.raises(ValidationError, match="layout_type must be one of"):
+        PresentationOutlineResponse.model_validate(bad)

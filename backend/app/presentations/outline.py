@@ -11,7 +11,7 @@ from app.presentations.prompts.slide_content import render_data_files
 # Week 6 presentation edits (ARC-06): which layouts need a spreadsheet comes from the layout registry.
 from app.presentations.schemas.layouts import DATA_LAYOUTS, SLIDE_LAYOUTS
 from app.presentations.schemas.slide_content import SourceChunk
-from app.presentations.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.outline import PresentationOutlineResponse
 
 
 def generate_outline(
@@ -102,6 +102,7 @@ def clean_outline(
             layout = "title"
         elif layout in DATA_LAYOUTS and not has_data:
             layout = "bullet_points"
+            slide = slide.model_copy(update={"data_hint": None})  # OUT-01: no spreadsheet, so no data intent
 
         updates = {
             "slide_number": number,
@@ -113,10 +114,13 @@ def clean_outline(
 
         fixed.append(slide.model_copy(update=updates))
 
-    return PresentationOutlineResponse(
-        presentation_title=(options.get("title") or outline.presentation_title),
-        target_audience=(outline.target_audience or options["audience"]),
-        slides=fixed,
+    # OUT-01: model_copy keeps the v2 fields (language, sections) that the repair does not touch.
+    return outline.model_copy(
+        update={
+            "presentation_title": options.get("title") or outline.presentation_title,
+            "target_audience": outline.target_audience or options["audience"],
+            "slides": fixed,
+        }
     )
 
 

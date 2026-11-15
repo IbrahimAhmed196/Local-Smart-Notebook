@@ -16,7 +16,7 @@ from app.presentations.data import (
     limits,
 )
 from app.presentations.schemas.slide_content import Bullet, ChartSpec, SlideContentDraft, TableSpec
-from app.presentations.schemas.slides import SlideOutlineItem
+from app.presentations.schemas.outline import SlideOutlineItem
 from app.presentations.slide_content_agent import generate_slide_content
 from tests.presentations.slide_samples import FakeClient
 
@@ -423,33 +423,33 @@ def test_the_new_settings_have_the_defaults_the_docs_promise(monkeypatch):
     from app.core.config import Settings
 
     s = Settings(_env_file=None)
-    assert (s.chart_max_series, s.chart_scale_ratio_warning, s.table_max_cell_chars) == (4, 100, 60)
-    assert (s.catalog_example_labels, s.slide_data_facts) == (5, True)
+    assert (s.presentation_chart_max_series, s.presentation_chart_scale_ratio_warning, s.presentation_table_max_cell_chars) == (4, 100, 60)
+    assert (s.presentation_catalog_example_labels, s.presentation_slide_data_facts) == (5, True)
 
 
 def test_the_new_settings_can_be_set_in_the_environment(monkeypatch):
     from app.core.config import Settings
 
     for name, value in dict(
-        CHART_MAX_SERIES="6",
-        CHART_SCALE_RATIO_WARNING="50",
-        TABLE_MAX_CELL_CHARS="80",
-        CATALOG_EXAMPLE_LABELS="0",
-        SLIDE_DATA_FACTS="false",
+        PRESENTATION_CHART_MAX_SERIES="6",
+        PRESENTATION_CHART_SCALE_RATIO_WARNING="50",
+        PRESENTATION_TABLE_MAX_CELL_CHARS="80",
+        PRESENTATION_CATALOG_EXAMPLE_LABELS="0",
+        PRESENTATION_SLIDE_DATA_FACTS="false",
     ).items():
         monkeypatch.setenv(name, value)
     s = Settings(_env_file=None)
-    assert (s.chart_max_series, s.chart_scale_ratio_warning, s.table_max_cell_chars) == (6, 50, 80)
-    assert (s.catalog_example_labels, s.slide_data_facts) == (0, False)
+    assert (s.presentation_chart_max_series, s.presentation_chart_scale_ratio_warning, s.presentation_table_max_cell_chars) == (6, 50, 80)
+    assert (s.presentation_catalog_example_labels, s.presentation_slide_data_facts) == (0, False)
 
 
 @pytest.mark.parametrize(
     "name, value",
     [
-        ("CHART_MAX_SERIES", "0"),
-        ("CHART_SCALE_RATIO_WARNING", "1"),
-        ("TABLE_MAX_CELL_CHARS", "2"),
-        ("CATALOG_EXAMPLE_LABELS", "-1"),
+        ("PRESENTATION_CHART_MAX_SERIES", "0"),
+        ("PRESENTATION_CHART_SCALE_RATIO_WARNING", "1"),
+        ("PRESENTATION_TABLE_MAX_CELL_CHARS", "2"),
+        ("PRESENTATION_CATALOG_EXAMPLE_LABELS", "-1"),
     ],
 )
 def test_a_nonsense_value_for_a_new_setting_stops_the_app_at_start(monkeypatch, name, value):

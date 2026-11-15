@@ -5,7 +5,7 @@ import pytest
 from app.presentations import generator as deck_generation
 from app.presentations.outline import generate_outline
 from app.presentations.schemas.slide_content import SlideContentDraft
-from app.presentations.schemas.slides import PresentationOutlineResponse
+from app.presentations.schemas.outline import PresentationOutlineResponse
 from app.schemas.presentations import PresentationCreate
 
 

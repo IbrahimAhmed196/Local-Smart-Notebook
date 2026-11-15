@@ -30,9 +30,9 @@ def test_the_defaults_are_exactly_the_values_that_used_to_be_hard_coded(monkeypa
     assert (s.presentation_model, s.ollama_base_url) == ("qwen2.5:3b", "http://localhost:11434")
     assert (s.outline_temperature, s.slide_temperature, s.presentation_num_ctx) == (0.3, 0.1, 8192)
     assert (s.ollama_json_max_attempts, s.slide_max_attempts) == (2, 2)
-    assert (s.chart_max_bar_categories, s.chart_max_pie_slices, s.chart_max_line_points) == (12, 8, 24)
-    assert (s.table_max_rows, s.table_max_columns) == (15, 6)
-    assert (s.catalog_max_files, s.catalog_max_sheets, s.catalog_max_columns, s.catalog_sample_rows) == (5, 5, 15, 50)
+    assert (s.presentation_chart_max_bar_categories, s.presentation_chart_max_pie_slices, s.presentation_chart_max_line_points) == (12, 8, 24)
+    assert (s.presentation_table_max_rows, s.presentation_table_max_columns) == (15, 6)
+    assert (s.presentation_catalog_max_files, s.presentation_catalog_max_sheets, s.presentation_catalog_max_columns, s.presentation_catalog_sample_rows) == (5, 5, 15, 50)
     assert s.ollama_structured_output is True
 
 
@@ -47,22 +47,22 @@ def test_environment_variables_change_every_presentation_setting(monkeypatch):
         OLLAMA_JSON_MAX_ATTEMPTS="3",
         SLIDE_MAX_ATTEMPTS="4",
         OLLAMA_STRUCTURED_OUTPUT="false",
-        CHART_MAX_BAR_CATEGORIES="20",
-        CHART_MAX_PIE_SLICES="5",
-        CHART_MAX_LINE_POINTS="36",
-        TABLE_MAX_ROWS="10",
-        TABLE_MAX_COLUMNS="8",
-        CATALOG_MAX_FILES="2",
-        CATALOG_MAX_SHEETS="3",
-        CATALOG_MAX_COLUMNS="10",
-        CATALOG_SAMPLE_ROWS="100",
+        PRESENTATION_CHART_MAX_BAR_CATEGORIES="20",
+        PRESENTATION_CHART_MAX_PIE_SLICES="5",
+        PRESENTATION_CHART_MAX_LINE_POINTS="36",
+        PRESENTATION_TABLE_MAX_ROWS="10",
+        PRESENTATION_TABLE_MAX_COLUMNS="8",
+        PRESENTATION_CATALOG_MAX_FILES="2",
+        PRESENTATION_CATALOG_MAX_SHEETS="3",
+        PRESENTATION_CATALOG_MAX_COLUMNS="10",
+        PRESENTATION_CATALOG_SAMPLE_ROWS="100",
     )
     assert s.presentation_model == "qwen2.5:7b-instruct" and s.ollama_base_url == "http://gpu-box:11434"
     assert (s.outline_temperature, s.slide_temperature, s.presentation_num_ctx) == (0.5, 0.2, 16384)
     assert (s.ollama_json_max_attempts, s.slide_max_attempts, s.ollama_structured_output) == (3, 4, False)
-    assert (s.chart_max_bar_categories, s.chart_max_pie_slices, s.chart_max_line_points) == (20, 5, 36)
-    assert (s.table_max_rows, s.table_max_columns) == (10, 8)
-    assert (s.catalog_max_files, s.catalog_max_sheets, s.catalog_max_columns, s.catalog_sample_rows) == (2, 3, 10, 100)
+    assert (s.presentation_chart_max_bar_categories, s.presentation_chart_max_pie_slices, s.presentation_chart_max_line_points) == (20, 5, 36)
+    assert (s.presentation_table_max_rows, s.presentation_table_max_columns) == (10, 8)
+    assert (s.presentation_catalog_max_files, s.presentation_catalog_max_sheets, s.presentation_catalog_max_columns, s.presentation_catalog_sample_rows) == (2, 3, 10, 100)
 
 
 def test_the_model_can_also_be_set_with_the_lsn_prefix(monkeypatch):
@@ -77,8 +77,8 @@ def test_the_model_can_also_be_set_with_the_lsn_prefix(monkeypatch):
         ("OLLAMA_JSON_MAX_ATTEMPTS", "0"),
         ("SLIDE_MAX_ATTEMPTS", "0"),
         ("PRESENTATION_NUM_CTX", "10"),
-        ("TABLE_MAX_ROWS", "0"),
-        ("CATALOG_SAMPLE_ROWS", "0"),
+        ("PRESENTATION_TABLE_MAX_ROWS", "0"),
+        ("PRESENTATION_CATALOG_SAMPLE_ROWS", "0"),
     ],
 )
 def test_a_nonsense_value_stops_the_app_at_start_with_a_clear_error(monkeypatch, name, value):
@@ -126,15 +126,15 @@ def test_module_constants_follow_the_environment_when_the_app_starts():
         "SLIDE_TEMPERATURE": "0.2",
         "PRESENTATION_NUM_CTX": "4096",
         "SLIDE_MAX_ATTEMPTS": "3",
-        "CHART_MAX_BAR_CATEGORIES": "20",
-        "CHART_MAX_PIE_SLICES": "5",
-        "CHART_MAX_LINE_POINTS": "36",
-        "TABLE_MAX_ROWS": "10",
-        "TABLE_MAX_COLUMNS": "8",
-        "CATALOG_MAX_FILES": "2",
-        "CATALOG_MAX_SHEETS": "3",
-        "CATALOG_MAX_COLUMNS": "10",
-        "CATALOG_SAMPLE_ROWS": "100",
+        "PRESENTATION_CHART_MAX_BAR_CATEGORIES": "20",
+        "PRESENTATION_CHART_MAX_PIE_SLICES": "5",
+        "PRESENTATION_CHART_MAX_LINE_POINTS": "36",
+        "PRESENTATION_TABLE_MAX_ROWS": "10",
+        "PRESENTATION_TABLE_MAX_COLUMNS": "8",
+        "PRESENTATION_CATALOG_MAX_FILES": "2",
+        "PRESENTATION_CATALOG_MAX_SHEETS": "3",
+        "PRESENTATION_CATALOG_MAX_COLUMNS": "10",
+        "PRESENTATION_CATALOG_SAMPLE_ROWS": "100",
     }
     code = (
         "import json, sys; sys.path[:0] = ['.', 'backend']\n"

@@ -15,7 +15,7 @@ from lxml import etree
 from pypdf import PdfReader
 
 from app.presentations.schemas.slide_content import SourceChunk
-from app.presentations.schemas.slides import SlideOutlineItem
+from app.presentations.schemas.outline import SlideOutlineItem
 from app.services import document_service
 
 log = logging.getLogger(__name__)

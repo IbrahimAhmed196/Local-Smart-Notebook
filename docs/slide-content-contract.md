@@ -39,14 +39,14 @@ the slide's `warnings`. `build_chart_data` / `build_table_data` still exist and 
 | `too_few_points` | error | a line needs at least 2 points, a pie at least 2 slices |
 | `invalid_chart_data`, `invalid_table_data` | error | the built data fails the schema checks (for example two series with the same name) |
 | `categories_truncated`, `points_truncated` | warning | more categories (bar 12, pie 8) or line points (24) than the limit: the biggest / first are kept |
-| `too_many_series`, `pie_extra_series` | warning | more value columns than `chart_max_series` (4), or more than one on a pie: the first are kept |
-| `scale_mismatch` | warning | one series is `chart_scale_ratio_warning` (100) times bigger than another: the small one looks flat |
+| `too_many_series`, `pie_extra_series` | warning | more value columns than `presentation_chart_max_series` (4), or more than one on a pie: the first are kept |
+| `scale_mismatch` | warning | one series is `presentation_chart_scale_ratio_warning` (100) times bigger than another: the small one looks flat |
 | `x_looks_like_id` | warning | a bar / pie x column with almost as many different values as rows (and over the limit) |
 | `duplicate_x` | warning | aggregation `none` but an x value repeats |
 | `column_mostly_empty` | warning | a value column has numbers in fewer than half of its rows (the other rows are left out) |
 | `line_x_not_ordered` | warning | a line whose x column is text; a date or number x column is sorted instead |
-| `columns_truncated`, `rows_truncated` | warning | a table over `table_max_columns` (6) / `table_max_rows` (15) |
-| `empty_column`, `long_cells` | warning | a table column empty in the rows shown; cells over `table_max_cell_chars` (60) characters |
+| `columns_truncated`, `rows_truncated` | warning | a table over `presentation_table_max_columns` (6) / `presentation_table_max_rows` (15) |
+| `empty_column`, `long_cells` | warning | a table column empty in the rows shown; cells over `presentation_table_max_cell_chars` (60) characters |
 | `formulas_not_calculated` | error | an Excel column of formulas that were never calculated (open the file in Excel, save it, upload it again) |
 
 ## The data catalog the model reads (`describe_sources`)
@@ -60,7 +60,7 @@ DATA FILES (spreadsheets you may use; column kinds are in parentheses, details a
     (single table), 8 rows: Region (text) [4 distinct, e.g. North, South, East, West], Revenue (number) [8 distinct, 45000 to 120000], ...
 ```
 
-The kind of a column is still detected from the first `catalog_sample_rows` (50) rows; the row count, distinct counts and ranges look at the whole
+The kind of a column is still detected from the first `presentation_catalog_sample_rows` (50) rows; the row count, distinct counts and ranges look at the whole
 sheet. The catalog describes the data; it never holds a **computed** value (a sum, an average): those reach the model only as data facts.
 Note that a range shows the smallest and biggest real cell value, and example labels are real labels from the file.
 
@@ -75,7 +75,7 @@ columns. They describe the categories or rows **shown**, and each says so. A tot
 [D4] Highest Revenue: North with 200,000 (31.6% of the total).
 ```
 
-The slide is then written a second time (a short extra model call; `SLIDE_DATA_FACTS=false` skips it) with the facts as citable sources
+The slide is then written a second time (a short extra model call; `PRESENTATION_SLIDE_DATA_FACTS=false` skips it) with the facts as citable sources
 `D1`, `D2` ...; only the bullets and speaker notes of the second answer are used, the chart or table stays the first answer's choice. A bullet
 that cites a fact but quotes a number found in none of its cited sources gets a warning. In the finished slide:
 
@@ -129,12 +129,12 @@ equal to the old hard-coded one, so nothing changes until you set it; the full l
 | Temperatures | `outline_temperature`, `slide_temperature` | 0.3, 0.1 |
 | Context window | `presentation_num_ctx` | 8192 |
 | Attempts | `ollama_json_max_attempts` (bad JSON), `slide_max_attempts` (unknown source ids) | 2, 2 |
-| Chart limits | `chart_max_bar_categories`, `chart_max_pie_slices`, `chart_max_line_points` | 12, 8, 24 |
-| Table limits | `table_max_rows`, `table_max_columns` | 15, 6 |
-| Chart / table checks (DAT-02) | `chart_max_series`, `chart_scale_ratio_warning`, `table_max_cell_chars` | 4, 100, 60 |
-| Example labels per text column (DAT-05) | `catalog_example_labels` (0 = none) | 5 |
-| The facts pass (DAT-06) | `slide_data_facts` (`false` = no second call per chart / table slide) | true |
-| What the model is told about spreadsheets | `catalog_max_files`, `catalog_max_sheets`, `catalog_max_columns`, `catalog_sample_rows` | 5, 5, 15, 50 |
+| Chart limits | `presentation_chart_max_bar_categories`, `presentation_chart_max_pie_slices`, `presentation_chart_max_line_points` | 12, 8, 24 |
+| Table limits | `presentation_table_max_rows`, `presentation_table_max_columns` | 15, 6 |
+| Chart / table checks (DAT-02) | `presentation_chart_max_series`, `presentation_chart_scale_ratio_warning`, `presentation_table_max_cell_chars` | 4, 100, 60 |
+| Example labels per text column (DAT-05) | `presentation_catalog_example_labels` (0 = none) | 5 |
+| The facts pass (DAT-06) | `presentation_slide_data_facts` (`false` = no second call per chart / table slide) | true |
+| What the model is told about spreadsheets | `presentation_catalog_max_files`, `presentation_catalog_max_sheets`, `presentation_catalog_max_columns`, `presentation_catalog_sample_rows` | 5, 5, 15, 50 |
 
 A nonsense value (for example `SLIDE_TEMPERATURE=9` or zero attempts) stops the app at start with a clear message. The limits are read
 when the app starts, so restart it after changing `.env`. Not moved yet: `infographic/analysis.py` has its own Ollama call and model

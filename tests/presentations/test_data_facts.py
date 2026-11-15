@@ -22,7 +22,7 @@ from app.presentations.schemas.slide_content import (
     TableData,
     TableSpec,
 )
-from app.presentations.schemas.slides import SlideOutlineItem
+from app.presentations.schemas.outline import SlideOutlineItem
 from app.presentations.slide_content_agent import generate_slide_content
 from tests.presentations.slide_samples import SALES_DOCUMENT_ID, FakeClient, mock_chunks, sales_source
 
@@ -359,7 +359,7 @@ def test_a_chart_that_cannot_be_built_costs_no_second_call():
 
 
 def test_the_facts_pass_can_be_switched_off(monkeypatch):
-    monkeypatch.setattr(settings, "slide_data_facts", False)
+    monkeypatch.setattr(settings, "presentation_slide_data_facts", False)
     client = FakeClient.sequence(answer(("North leads", ["S1"]), chart=SPEC))
     slide = write(client)
     assert len(client.calls) == 1 and slide.chart is not None and slide.citations[0].text is None

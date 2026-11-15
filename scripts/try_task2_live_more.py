@@ -21,7 +21,7 @@ import pandas as pd  # noqa: E402
 
 from app.presentations.data import DataSource  # noqa: E402
 from app.presentations.schemas.slide_content import Bullet, ChartSpec, SlideContentDraft, SourceChunk  # noqa: E402
-from app.presentations.schemas.slides import SlideOutlineItem  # noqa: E402
+from app.presentations.schemas.outline import SlideOutlineItem  # noqa: E402
 from app.presentations.slide_content_agent import generate_presentation_content, generate_slide_content  # noqa: E402
 from tests.presentations.slide_samples import FakeClient, mock_chunks, mock_outline, sales_source, sample_client  # noqa: E402
 

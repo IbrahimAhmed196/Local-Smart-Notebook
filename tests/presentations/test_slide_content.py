@@ -20,7 +20,7 @@ from app.presentations.schemas.slide_content import (
     SourceChunk,
     TableSpec,
 )
-from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 from app.presentations.slide_content_agent import (
     MAX_ATTEMPTS,
     NUM_CTX,
@@ -186,7 +186,12 @@ def test_layout_names_are_tolerated(raw):
 
 
 def test_an_unknown_layout_becomes_bullet_points_with_a_warning():
-    slide = write(item("timeline"), FakeClient.sequence(draft(("x", ["S1"]))))
+    # OUT-01: the outline schema rejects 'timeline' now, but an outline stored earlier could still hold one,
+    # so build the item without validation to keep testing the slide writer's own fallback.
+    old_item = SlideOutlineItem.model_construct(
+        slide_number=2, title="Key Findings", purpose="Summarise the results", layout_type="timeline"
+    )
+    slide = write(old_item, FakeClient.sequence(draft(("x", ["S1"]))))
     assert slide.layout_type == "bullet_points"
     assert any("timeline" in w for w in slide.warnings)
 

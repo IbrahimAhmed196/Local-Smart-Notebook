@@ -5,7 +5,7 @@ from app.core.exceptions import ConflictError
 from app.database.models import Notebook, Presentation, PresentationStatus
 from app.presentations import runner
 from app.presentations.outline import clean_outline
-from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 from app.schemas.presentations import PresentationCreate
 from app.services import presentation_service as service
 

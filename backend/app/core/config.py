@@ -87,24 +87,34 @@ class Settings(BaseSettings):
     slide_max_attempts: int = Field(default=2, ge=1)
 
     # Presentation chart and table limits
-    chart_max_bar_categories: int = Field(default=12, ge=1)
-    chart_max_pie_slices: int = Field(default=8, ge=1)
-    chart_max_line_points: int = Field(default=24, ge=1)
-    table_max_rows: int = Field(default=15, ge=1)
-    table_max_columns: int = Field(default=6, ge=1)
+    presentation_chart_max_bar_categories: int = Field(default=12, ge=1)
+    presentation_chart_max_pie_slices: int = Field(default=8, ge=1)
+    presentation_chart_max_line_points: int = Field(default=24, ge=1)
+    presentation_table_max_rows: int = Field(default=15, ge=1)
+    presentation_table_max_columns: int = Field(default=6, ge=1)
 
     # Spreadsheet catalog limits
-    catalog_max_files: int = Field(default=5, ge=1)
-    catalog_max_sheets: int = Field(default=5, ge=1)
-    catalog_max_columns: int = Field(default=15, ge=1)
-    catalog_sample_rows: int = Field(default=50, ge=1)
+    presentation_catalog_max_files: int = Field(default=5, ge=1)
+    presentation_catalog_max_sheets: int = Field(default=5, ge=1)
+    presentation_catalog_max_columns: int = Field(default=15, ge=1)
+    presentation_catalog_sample_rows: int = Field(default=50, ge=1)
 
     # Week 6 presentation edits (DAT-02 / DAT-05 / DAT-06): limits of the chart/table checks, the data catalog
     # and the data facts.
-    chart_max_series: int = Field(default=4, ge=1)                # more value columns than this are cut (with a warning)
-    chart_scale_ratio_warning: float = Field(default=100, gt=1)   # warn when one series is this many times bigger than another
-    table_max_cell_chars: int = Field(default=60, ge=10)          # warn about table cells longer than this
-    catalog_example_labels: int = Field(default=5, ge=0)          # example labels shown for a text column (0 = none)
-    slide_data_facts: bool = True                                 # false = skip the extra model call that writes bullets from the data facts
+    presentation_chart_max_series: int = Field(default=4, ge=1)                # more value columns than this are cut (with a warning)
+    presentation_chart_scale_ratio_warning: float = Field(default=100, gt=1)   # warn when one series is this many times bigger than another
+    presentation_table_max_cell_chars: int = Field(default=60, ge=10)          # warn about table cells longer than this
+    presentation_catalog_example_labels: int = Field(default=5, ge=0)          # example labels shown for a text column (0 = none)
+    presentation_slide_data_facts: bool = True                                 # false = skip the extra model call that writes bullets from the data facts
+
+  # presentation Context extraction (CTX-02 / CTX-03 / CTX-04): the temporary LLM extractor only handles small documents.
+    presentation_context_max_pdf_pages: int = Field(default=100, ge=1)  # CTX-02: a PDF with more pages is "too large"
+    presentation_context_max_docx_mb: float = Field(default=20, gt=0)  # CTX-02: uncompressed size of word/document.xml
+    presentation_context_max_chars_per_document: int | None = Field(default=None, ge=500)  # CTX-03: None = by model and language
+    presentation_context_max_documents: int = Field(default=5, ge=1)  # CTX-03
+    presentation_context_max_facts_per_document: int = Field(default=12, ge=1)  # CTX-04
+    presentation_context_max_facts_total: int = Field(default=40, ge=1)  # CTX-04
+    presentation_context_temperature: float = Field(default=0.1, ge=0, le=2)  # CTX-04
+
 
 settings = Settings()

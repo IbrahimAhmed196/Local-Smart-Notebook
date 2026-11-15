@@ -38,7 +38,7 @@ from app.presentations.schemas.slide_content import (
     SlideContentDraft,
     SourceChunk,
 )
-from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 
 log = logging.getLogger(__name__)
 TEMPERATURE = settings.slide_temperature
@@ -162,7 +162,7 @@ def generate_slide_content(
     # Week 6 presentation edits (DAT-06): the model chose the chart / table without seeing it. Now that Python can
     # build it, compute the facts and let the model write the bullets again from them (a second, short model call).
     facts: List[DataFact] = []
-    if layout in DATA_LAYOUTS and settings.slide_data_facts:
+    if layout in DATA_LAYOUTS and settings.presentation_slide_data_facts:
         facts = _data_facts(layout, draft, data_files)
         if facts:
             raise_if_cancelled(cancel_event)

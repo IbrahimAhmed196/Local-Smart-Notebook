@@ -20,7 +20,7 @@ def sample_deck():
 def fake_generator(monkeypatch, sample_deck):
     """Replace generation stages while keeping the real runner and renderer."""
     from app.presentations.interfaces import GenerationSources
-    from app.presentations.schemas.slides import PresentationOutlineResponse, SlideOutlineItem
+    from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 
     class FakeDeckGenerator:
         def __init__(self):

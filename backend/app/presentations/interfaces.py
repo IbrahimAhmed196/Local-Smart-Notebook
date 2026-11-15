@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     )
     from app.presentations.data import DataSource
     from app.presentations.schemas.slide_content import PresentationContent, SourceChunk
-    from app.presentations.schemas.slides import (
+    from app.presentations.schemas.outline import (
         PresentationOutlineResponse,
         SlideOutlineItem,
     )
@@ -45,7 +45,12 @@ class ContextProvider(Protocol):
         options: ContextOptions | None = None,
         *,
         progress: ProgressCallback | None = None,
+        cancel_event: Event | None = None,
+        # CTX-07: previous=... and on_document=... (do not pass before then)
+        previous: PresentationContext | None = None,
+        on_document: Callable[[PresentationContext], None] | None = None,
     ) -> PresentationContext: ...
+
 
     def for_slide(
         self,
