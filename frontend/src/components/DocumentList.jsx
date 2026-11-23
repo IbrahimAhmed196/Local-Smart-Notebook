@@ -11,7 +11,7 @@ const BADGE = {
 
 const fmtSize = (b) => (b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`)
 
-function DocItem({ d, onDownload, onDelete, onCheck, onSave }) {
+function DocItem({ d, onDownload, onDelete, onCheck, onSave, onInfographic }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(d.filename)
   const [desc, setDesc] = useState(d.description || '')
@@ -51,6 +51,16 @@ function DocItem({ d, onDownload, onDelete, onCheck, onSave }) {
       ) : (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
           <button onClick={() => onDownload(d)} className="text-mauve-100 hover:text-white">Download</button>
+          {onInfographic && (
+            <button
+              type="button"
+              onClick={() => onInfographic(d)}
+              title="Generate infographic from this document"
+              className="font-medium text-mauve-300 hover:text-white"
+            >
+              ▦ Infographic
+            </button>
+          )}
           <button onClick={() => setEditing(true)} className="text-mauve-100 hover:text-white">Edit</button>
           <button onClick={() => onCheck(d)} className="text-mauve-100 hover:text-white">Check status</button>
           <button onClick={() => onDelete(d)} className="text-mauve-200 hover:text-white">Delete</button>
@@ -60,7 +70,7 @@ function DocItem({ d, onDownload, onDelete, onCheck, onSave }) {
   )
 }
 
-export default function DocumentList({ docs, total, loading, error, filters, onFilters, onRefresh, onDownload, onDelete, onCheck, onSave }) {
+export default function DocumentList({ docs, total, loading, error, filters, onFilters, onRefresh, onDownload, onDelete, onCheck, onSave, onInfographic }) {
   const [search, setSearch] = useState(filters.search || '')
 
   return (
@@ -98,7 +108,7 @@ export default function DocumentList({ docs, total, loading, error, filters, onF
       <ul className="space-y-2">
         {(docs || []).map((d) => (
           <DocItem key={`${d.id}-${d.filename}-${d.description}-${d.status}`} d={d}
-            onDownload={onDownload} onDelete={onDelete} onCheck={onCheck} onSave={onSave} />
+            onDownload={onDownload} onDelete={onDelete} onCheck={onCheck} onSave={onSave} onInfographic={onInfographic} />
         ))}
       </ul>
       {docs && docs.length > 0 && (

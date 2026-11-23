@@ -4,6 +4,7 @@
 model (with the earlier messages of the chat and the text of the notebook's uploaded
 files) and stores the answer as a message with sender="assistant".
 """
+import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -99,9 +100,22 @@ def delete_conversation(db: Session, conversation: Conversation) -> None:
 
 
 def add_message(
-    db: Session, conversation: Conversation, content: str, sender: str = USER_SENDER
+    db: Session,
+    conversation: Conversation,
+    content: str,
+    sender: str = USER_SENDER,
+    feature: str = "chat",
+    artifact_path: str | None = None,
+    artifact_type: str | None = None,
 ) -> Message:
-    message = Message(conversation_id=conversation.id, sender=sender, content=content)
+    message = Message(
+        conversation_id=conversation.id,
+        sender=sender,
+        content=content,
+        feature=feature,
+        artifact_path=artifact_path,
+        artifact_type=artifact_type,
+    )
     db.add(message)
     db.commit()
     db.refresh(message)
@@ -163,13 +177,67 @@ def build_prompt(
     return messages, sources
 
 
-def ask(db: Session, conversation: Conversation, content: str) -> Exchange:
+def ask(
+    db: Session,
+    conversation: Conversation,
+    content: str,
+    feature: str = "chat",
+) -> Exchange:
     """Store the question, get the model's answer, store that too.
 
     The question is saved even if the model is down: the caller then gets `error` and no
     assistant message, and the user can simply ask again.
     """
-    user_message = add_message(db, conversation, content, USER_SENDER)
+    user_message = add_message(db, conversation, content, USER_SENDER, feature=feature or "chat")
+
+    if feature == "infographic":
+        try:
+            from app.infographic.pipeline import generate_infographic_plan
+            from app.infographic.rendering import render_infographic
+            from app.artifacts import manager
+
+            report_text = content
+            sources = []
+            if len(content.strip()) < 100:
+                context, doc_sources = document_context.build_context(
+                    db, conversation.notebook_id, content, settings.chat_context_chars
+                )
+                if context:
+                    report_text = context
+                    sources = doc_sources
+
+            plan = generate_infographic_plan(report_text)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        rendered = pool.submit(asyncio.run, render_infographic(plan, output_format="png", scale=2.0)).result()
+                else:
+                    rendered = loop.run_until_complete(render_infographic(plan, output_format="png", scale=2.0))
+            except RuntimeError:
+                rendered = asyncio.run(render_infographic(plan, output_format="png", scale=2.0))
+
+            filename = f"infographic_{user_message.id}.png"
+            rel_path = f"notebook_{conversation.notebook_id}/infographics/{filename}"
+            abs_path = manager.resolve(rel_path)
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            abs_path.write_bytes(rendered.content)
+
+            assistant_message = add_message(
+                db,
+                conversation,
+                "Here is your generated infographic:",
+                ASSISTANT_SENDER,
+                feature="infographic",
+                artifact_path=rel_path,
+                artifact_type="image/png",
+            )
+            return Exchange(user_message, assistant_message, sources=sources)
+        except Exception as exc:
+            log.warning("Infographic generation failed: %s", exc)
+            return Exchange(user_message, error=f"Infographic generation failed: {exc}")
+
     try:
         prompt, sources = build_prompt(db, conversation, content, user_message.id)
         answer = get_chat_client().chat(
@@ -184,5 +252,5 @@ def ask(db: Session, conversation: Conversation, content: str) -> Exchange:
         log.exception("Unexpected error while answering a chat message")
         return Exchange(user_message, error="Something went wrong while preparing the answer.")
 
-    assistant_message = add_message(db, conversation, answer, ASSISTANT_SENDER)
+    assistant_message = add_message(db, conversation, answer, ASSISTANT_SENDER, feature="chat")
     return Exchange(user_message, assistant_message, sources=sources)

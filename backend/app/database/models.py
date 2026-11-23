@@ -73,6 +73,9 @@ class Message(Base):
     sender = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    feature = Column(String, nullable=False, default="chat")
+    artifact_path = Column(String, nullable=True)
+    artifact_type = Column(String, nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")
 

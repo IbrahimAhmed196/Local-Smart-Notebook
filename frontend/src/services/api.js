@@ -7,6 +7,8 @@
 //   GET/PATCH/DELETE /documents/{id}, GET /documents/{id}/download
 //   POST/GET /conversations, GET/PATCH/DELETE /conversations/{id},
 //   POST/GET /conversations/{id}/messages, POST /conversations/{id}/ask (AI answer)
+//   POST /api/infographic/generate, POST /api/infographic/generate-image,
+//   POST /api/infographic/render, POST /api/infographic/validate
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 const TOKEN_KEY = 'lsn_token'
@@ -46,6 +48,14 @@ function detailToText(detail, fallback) {
   if (typeof detail === 'string') return detail
   if (Array.isArray(detail)) {
     return detail.map((d) => `${(d.loc || []).slice(1).join('.') || 'field'}: ${d.msg}`).join('; ')
+  }
+  if (detail && typeof detail === 'object') {
+    if (detail.details) {
+      const d = typeof detail.details === 'string' ? detail.details : JSON.stringify(detail.details)
+      return detail.error ? `${detail.error} ${d}` : d
+    }
+    if (detail.error) return detail.error
+    if (detail.message) return detail.message
   }
   return fallback
 }
@@ -148,10 +158,14 @@ export const updateDocument = (id, patch) => request(`/documents/${id}`, { metho
 
 export const deleteDocument = (id) => request(`/documents/${id}`, { method: 'DELETE' })
 
+export async function getDocumentBlob(doc) {
+  const res = await request(`/documents/${doc.id}/download`, { raw: true })
+  return res.blob()
+}
+
 // The download endpoint needs the Authorization header, so a plain <a href> would not work.
 export async function downloadDocument(doc) {
-  const res = await request(`/documents/${doc.id}/download`, { raw: true })
-  const blob = await res.blob()
+  const blob = await getDocumentBlob(doc)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -172,8 +186,9 @@ export const renameConversation = (id, title) =>
   request(`/conversations/${id}`, { method: 'PATCH', json: { title } })
 export const deleteConversation = (id) => request(`/conversations/${id}`, { method: 'DELETE' })
 export const listMessages = (id) => request(`/conversations/${id}/messages?limit=200`)
-export const sendMessage = (id, content) =>
-  request(`/conversations/${id}/messages`, { method: 'POST', json: { content } })
+export const sendMessage = (id, content, feature = 'chat') =>
+  request(`/conversations/${id}/messages`, { method: 'POST', json: { content, feature } })
+
 // Stores the question AND asks the AI model (it sees this chat's history and the notebook's
 // uploaded files). Resolves to {user_message, assistant_message | null, error | null, sources: [filenames]}.
 // If the model is down, the question is still stored and `error` explains why.
@@ -182,3 +197,55 @@ export const askAi = (id, content, feature = null) =>
     method: 'POST',
     json: { content, feature },
   })
+
+// ---- Infographic ----
+export const validateInfographic = (plan) =>
+  request('/api/infographic/validate', { method: 'POST', json: plan })
+
+export const generateInfographic = (fileOrText) => {
+  const form = new FormData()
+  const file =
+    fileOrText instanceof File
+      ? fileOrText
+      : new File(
+          [fileOrText instanceof Blob ? fileOrText : new Blob([String(fileOrText)], { type: 'text/plain' })],
+          'report.txt',
+          { type: 'text/plain' }
+        )
+  form.append('file', file)
+  return request('/api/infographic/generate', { method: 'POST', form })
+}
+
+export async function renderInfographic(plan, { format = 'png', scale = 2.0 } = {}) {
+  const q = new URLSearchParams()
+  if (format) q.set('format', format)
+  if (scale) q.set('scale', String(scale))
+  const res = await request(`/api/infographic/render?${q}`, {
+    method: 'POST',
+    json: plan,
+    raw: true,
+  })
+  return res.blob()
+}
+
+export async function generateInfographicImage(fileOrText, { format = 'png', scale = 2.0 } = {}) {
+  const form = new FormData()
+  const file =
+    fileOrText instanceof File
+      ? fileOrText
+      : new File(
+          [fileOrText instanceof Blob ? fileOrText : new Blob([String(fileOrText)], { type: 'text/plain' })],
+          'report.txt',
+          { type: 'text/plain' }
+        )
+  form.append('file', file)
+  const q = new URLSearchParams()
+  if (format) q.set('format', format)
+  if (scale) q.set('scale', String(scale))
+  const res = await request(`/api/infographic/generate-image?${q}`, {
+    method: 'POST',
+    form,
+    raw: true,
+  })
+  return res.blob()
+}

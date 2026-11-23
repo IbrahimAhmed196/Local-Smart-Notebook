@@ -85,7 +85,9 @@ def submit_message(
     conversation: Conversation = Depends(get_owned_conversation),
     db: Session = Depends(get_db),
 ):
-    return chat_service.add_message(db, conversation, data.content)
+    return chat_service.add_message(
+        db, conversation, data.content, feature=data.feature or "chat"
+    )
 
 
 @router.get("/{conversation_id}/messages", response_model=list[MessageResponse])
@@ -99,6 +101,7 @@ def get_messages(
     response.headers["X-Total-Count"] = str(chat_service.count_messages(db, conversation))
     return chat_service.get_history(db, conversation, limit, offset)
 
+
 @router.post("/{conversation_id}/ask", response_model=AskResponse)
 def ask_ai(
     data: MessageCreate,
@@ -107,7 +110,9 @@ def ask_ai(
 ):
     """Save the user's message, ask the AI (using this chat's history and the notebook's
     uploaded files) and save its answer. Returns both messages."""
-    exchange = chat_service.ask(db, conversation, data.content)
+    exchange = chat_service.ask(
+        db, conversation, data.content, feature=data.feature or "chat"
+    )
     return AskResponse(
         user_message=exchange.user_message,
         assistant_message=exchange.assistant_message,

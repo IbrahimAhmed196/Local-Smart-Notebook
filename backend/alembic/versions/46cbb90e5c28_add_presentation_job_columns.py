@@ -1,7 +1,7 @@
 """add presentation job columns
 
 Revision ID: 46cbb90e5c28
-Revises: 850466258613
+Revises: c3a7e1b92f64
 Create Date: 2026-10-30 14:45:48.119463
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '46cbb90e5c28'
-down_revision: Union[str, Sequence[str], None] = '850466258613'
+down_revision: Union[str, Sequence[str], None] = 'c3a7e1b92f64'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -37,4 +37,3 @@ def downgrade() -> None:
         batch_op.drop_column('progress')
         batch_op.drop_column('context')
         batch_op.drop_column('outline')
-

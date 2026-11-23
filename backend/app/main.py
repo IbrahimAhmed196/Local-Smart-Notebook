@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.infographic.router import router as infographic_router
-from app.api import auth, chat, documents, projects, presentations
+from app.api import artifacts, auth, chat, documents, projects, presentations
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
@@ -41,6 +41,7 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
 )
 app.include_router(infographic_router)
+app.include_router(artifacts.router)
 
 @app.exception_handler(AppError)
 async def app_error_handler(_: Request, exc: AppError):
@@ -53,6 +54,8 @@ app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(documents.router, prefix=settings.api_prefix)
 app.include_router(chat.router, prefix=settings.api_prefix)
 app.include_router(presentations.router, prefix=settings.api_prefix) 
+if settings.api_prefix:
+    app.include_router(artifacts.router, prefix=settings.api_prefix)
 # Later tasks: query, summaries, analytics, ...
 
 

@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react'
 import { btnPrimary } from '../ui.js'
 
@@ -212,7 +211,11 @@ export default function ChatInput({
           rows={1}
           value={text}
           disabled={blocked}
-          placeholder={placeholder}
+          placeholder={
+            currentFeature?.id === 'infographic'
+              ? 'Enter report text or prompt for infographic… (Enter to send)'
+              : placeholder
+          }
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -234,7 +237,7 @@ export default function ChatInput({
         disabled={blocked || !text.trim()}
         className={`${btnPrimary} shrink-0 rounded-xl px-5 py-3`}
       >
-        {sending ? 'Sending…' : 'Send'}
+        {sending ? (currentFeature?.id === 'infographic' ? 'Generating…' : 'Sending…') : 'Send'}
       </button>
     </form>
   )

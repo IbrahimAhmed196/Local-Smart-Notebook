@@ -184,7 +184,10 @@ export default function App() {
       let conv = activeConv
 
       if (!conv) {
-        conv = await api.createConversation(activeId, text.slice(0, 40))
+        conv = await api.createConversation(
+          activeId,
+          feature === 'infographic' ? `Infographic: ${text.slice(0, 30)}` : text.slice(0, 40)
+        )
         setConversations((l) => [conv, ...l])
         setActiveConv(conv)
       }
@@ -203,27 +206,98 @@ export default function App() {
       ])
       shown = true
 
-      // The API still receives the original text in this frontend-only step.
-      const res = await api.askAi(conv.id, text, feature);
-      setMessages((m) => {
-        return m.map((x) => {
-          if (x.id === tempId) {
-            return {
-              ...res.user_message,
-              feature: res.user_message.feature ?? feature,
-            };
+      if (feature === 'infographic') {
+        let reportInput = text
+        if (text.trim().length < 60 && docs && docs.length > 0) {
+          const matchingDoc =
+            docs.find((d) => text.toLowerCase().includes(d.filename.toLowerCase())) ||
+            docs.find((d) => d.file_type === 'txt') ||
+            docs[0]
+          if (matchingDoc) {
+            try {
+              const docBlob = await api.getDocumentBlob(matchingDoc)
+              reportInput = new File(
+                [docBlob],
+                matchingDoc.filename.endsWith('.txt') ? matchingDoc.filename : `${matchingDoc.filename}.txt`,
+                { type: 'text/plain' }
+              )
+            } catch {
+              reportInput = text
+            }
           }
-          return x;
-        }).concat(
-          res.assistant_message
-            ? [{
-                ...res.assistant_message,
-                sources: res.sources,
-              }]
-            : []
-        );
-      });      
-      
+        }
+
+        // Call the backend Infographic API (POST /api/infographic/generate-image)
+        const imageBlob = await api.generateInfographicImage(reportInput, {
+          format: 'png',
+          scale: 2.0,
+        })
+        const imageUrl = URL.createObjectURL(imageBlob)
+
+        let savedUserMsg = null
+        try {
+          savedUserMsg = await api.sendMessage(conv.id, text, 'infographic')
+        } catch {
+          savedUserMsg = {
+            id: tempId,
+            conversation_id: conv.id,
+            sender: 'user',
+            content: text,
+            feature: 'infographic',
+            timestamp: new Date().toISOString(),
+          }
+        }
+
+        const assistantMsg = {
+          id: `infographic-${Date.now()}`,
+          conversation_id: conv.id,
+          sender: 'assistant',
+          content: 'Here is your generated infographic:',
+          feature: 'infographic',
+          imageUrl,
+          image_url: imageUrl,
+          timestamp: new Date().toISOString(),
+        }
+
+        try {
+          await api.sendMessage(conv.id, 'Here is your generated infographic:', 'infographic')
+        } catch {
+          // ignore
+        }
+
+        setMessages((m) =>
+          m
+            .map((x) => (x.id === tempId ? { ...savedUserMsg, feature: 'infographic' } : x))
+            .concat([assistantMsg])
+        )
+
+        return true
+      }
+
+      // Normal chat or other features
+      const res = await api.askAi(conv.id, text, feature)
+      setMessages((m) => {
+        return m
+          .map((x) => {
+            if (x.id === tempId) {
+              return {
+                ...res.user_message,
+                feature: res.user_message.feature ?? feature,
+              }
+            }
+            return x
+          })
+          .concat(
+            res.assistant_message
+              ? [
+                  {
+                    ...res.assistant_message,
+                    sources: res.sources,
+                  },
+                ]
+              : []
+          )
+      })
 
       if (res.error) setChatError(res.error)
 
@@ -235,6 +309,85 @@ export default function App() {
 
       setChatError(err.message)
       return false
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const generateDocInfographic = async (doc) => {
+    if (sending || activeId == null) return
+    setSending(true)
+    setChatError('')
+    const tempId = `pending-${Date.now()}`
+    try {
+      let conv = activeConv
+      if (!conv) {
+        conv = await api.createConversation(activeId, `Infographic: ${doc.filename}`)
+        setConversations((l) => [conv, ...l])
+        setActiveConv(conv)
+      }
+
+      const promptText = `Generate infographic for ${doc.filename}`
+      setMessages((m) => [
+        ...m,
+        {
+          id: tempId,
+          sender: 'user',
+          content: promptText,
+          feature: 'infographic',
+          timestamp: new Date().toISOString(),
+          pending: true,
+        },
+      ])
+
+      const docBlob = await api.getDocumentBlob(doc)
+      const file = new File(
+        [docBlob],
+        doc.filename.endsWith('.txt') ? doc.filename : `${doc.filename}.txt`,
+        { type: 'text/plain' }
+      )
+      const imageBlob = await api.generateInfographicImage(file, { format: 'png', scale: 2.0 })
+      const imageUrl = URL.createObjectURL(imageBlob)
+
+      let savedUserMsg = null
+      try {
+        savedUserMsg = await api.sendMessage(conv.id, promptText, 'infographic')
+      } catch {
+        savedUserMsg = {
+          id: tempId,
+          conversation_id: conv.id,
+          sender: 'user',
+          content: promptText,
+          feature: 'infographic',
+          timestamp: new Date().toISOString(),
+        }
+      }
+
+      const assistantMsg = {
+        id: `infographic-${Date.now()}`,
+        conversation_id: conv.id,
+        sender: 'assistant',
+        content: `Here is the infographic generated from ${doc.filename}:`,
+        feature: 'infographic',
+        imageUrl,
+        image_url: imageUrl,
+        timestamp: new Date().toISOString(),
+      }
+
+      try {
+        await api.sendMessage(conv.id, `Here is the infographic generated from ${doc.filename}:`, 'infographic')
+      } catch {
+        // ignore
+      }
+
+      setMessages((m) =>
+        m
+          .map((x) => (x.id === tempId ? { ...savedUserMsg, feature: 'infographic' } : x))
+          .concat([assistantMsg])
+      )
+    } catch (err) {
+      setMessages((m) => m.filter((x) => x.id !== tempId))
+      setChatError(err.message)
     } finally {
       setSending(false)
     }
@@ -417,7 +570,8 @@ export default function App() {
             documents={active && (
               <DocumentList docs={docs} total={docTotal} loading={docsLoading} error={docsError}
                 filters={filters} onFilters={setFilters}
-                onRefresh={loadDocs} onDownload={downloadDoc} onDelete={deleteDoc} onCheck={checkDoc} onSave={saveDoc} />
+                onRefresh={loadDocs} onDownload={downloadDoc} onDelete={deleteDoc} onCheck={checkDoc} onSave={saveDoc}
+                onInfographic={generateDocInfographic} />
             )} />
         </div>
       </div>

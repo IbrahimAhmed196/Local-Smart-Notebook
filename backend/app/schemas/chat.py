@@ -1,7 +1,7 @@
 """Pydantic schemas for conversations and messages (Task 4)."""
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ConversationCreate(BaseModel):
@@ -40,6 +40,7 @@ class ConversationResponse(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=10000)
+    feature: str | None = None
 
     @field_validator("content")
     @classmethod
@@ -57,6 +58,16 @@ class MessageResponse(BaseModel):
     sender: str
     content: str
     timestamp: datetime
+    feature: str | None = "chat"
+    artifact_path: str | None = None
+    artifact_type: str | None = None
+    image_url: str | None = None
+
+    @model_validator(mode="after")
+    def compute_image_url(self) -> "MessageResponse":
+        if not self.image_url and self.artifact_path and self.artifact_type in ("image/png", "infographic"):
+            self.image_url = f"/artifacts/{self.artifact_path}"
+        return self
 
 
 class ConversationHistory(BaseModel):

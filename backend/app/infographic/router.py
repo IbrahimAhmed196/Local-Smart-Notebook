@@ -1,9 +1,8 @@
-
 """FastAPI endpoints for infographic validation, generation, and rendering."""
 
 from typing import Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import ValidationError
 
@@ -70,6 +69,27 @@ async def _read_text_report(file: UploadFile) -> str:
     return report
 
 
+async def _extract_report_text(
+    file: UploadFile | None = None,
+    report: str | None = None,
+) -> str:
+    if file is not None and file.filename is not None:
+        return await _read_text_report(file)
+    if report is not None:
+        if not report.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="The report contains no readable text.",
+            )
+        return report.strip()
+    if file is not None:
+        return await _read_text_report(file)
+    raise HTTPException(
+        status_code=400,
+        detail="No filename was provided.",
+    )
+
+
 async def _render_response(
     plan: InfographicPlan,
     output_format: str,
@@ -94,11 +114,14 @@ async def _render_response(
 
 
 @router.post("/generate")
-async def generate_infographic(file: UploadFile = File(...)):
+async def generate_infographic(
+    file: UploadFile | None = File(None),
+    report: str | None = Form(None),
+):
     """Analyze a report and return a validated infographic plan."""
     try:
-        report = await _read_text_report(file)
-        plan = generate_infographic_plan(report)
+        report_text = await _extract_report_text(file, report)
+        plan = generate_infographic_plan(report_text)
 
         return {
             "success": True,
@@ -139,7 +162,8 @@ async def generate_infographic(file: UploadFile = File(...)):
         ) from exc
 
     finally:
-        await file.close()
+        if file is not None:
+            await file.close()
 
 
 @router.post("/render")
@@ -201,7 +225,8 @@ async def render_existing_plan(
 
 @router.post("/generate-image")
 async def generate_and_render_infographic(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    report: str | None = Form(None),
     output_format: Literal["png", "html"] = Query(
         "png",
         alias="format",
@@ -210,8 +235,8 @@ async def generate_and_render_infographic(
 ):
     """Upload report -> analyze -> validate -> render."""
     try:
-        report = await _read_text_report(file)
-        plan = generate_infographic_plan(report)
+        report_text = await _extract_report_text(file, report)
+        plan = generate_infographic_plan(report_text)
 
         return await _render_response(
             plan,
@@ -259,5 +284,5 @@ async def generate_and_render_infographic(
         ) from exc
 
     finally:
-        await file.close()
-
+        if file is not None:
+            await file.close()

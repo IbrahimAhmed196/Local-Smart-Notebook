@@ -1,13 +1,19 @@
 // One stored message. Messages come from the backend: sender "user" is the person; any other
 // sender (a future AI answer) would be shown on the left.
+import { getBaseUrl } from '../services/api.js'
 
 export default function MessageBubble({ message }) {
   const mine = message.sender === 'user'
 
-  const imageUrl =
+  const rawImageUrl =
     message.image_url ||
     message.imageUrl ||
     null
+
+  const imageUrl =
+    rawImageUrl && rawImageUrl.startsWith('/') && !rawImageUrl.startsWith('//')
+      ? `${getBaseUrl()}${rawImageUrl}`
+      : rawImageUrl
 
   const featureNames = {
     infographic: 'Infographic',
@@ -29,7 +35,7 @@ export default function MessageBubble({ message }) {
             : 'bg-mauve-950 border border-mauve-800 text-white rounded-bl-sm'
         }`}
       >
-        {mine && featureName && (
+        {featureName && (
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-mauve-200">
             <span aria-hidden="true">✧</span>
             <span>{featureName}</span>
@@ -40,35 +46,35 @@ export default function MessageBubble({ message }) {
           {message.content}
         </p>
         {imageUrl && (
-  <div className="mt-3 space-y-2">
-    <a
-      href={imageUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block"
-    >
-      <img
-        src={imageUrl}
-        alt="Chat attachment"
-        loading="lazy"
-        className="max-h-[420px] max-w-full rounded-xl
-          border border-mauve-700 object-contain"
-      />
-    </a>
+          <div className="mt-3 space-y-2">
+            <a
+              href={imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <img
+                src={imageUrl}
+                alt="Infographic attachment"
+                loading="lazy"
+                className="max-h-[420px] max-w-full rounded-xl
+                  border border-mauve-700 object-contain"
+              />
+            </a>
 
-    <a
-      href={imageUrl}
-      download
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg
-        border border-mauve-400/40 px-3 py-2 text-xs
-        font-medium text-white transition hover:bg-mauve-800"
-    >
-      ↓ Download image
-    </a>
-  </div>
-)}
+            <a
+              href={imageUrl}
+              download="infographic.png"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg
+                border border-mauve-400/40 px-3 py-2 text-xs
+                font-medium text-white transition hover:bg-mauve-800"
+            >
+              ↓ Download image
+            </a>
+          </div>
+        )}
         <p className="mt-1 text-[11px] text-mauve-200">
           #{message.id} ·{' '}
           {new Date(message.timestamp).toLocaleTimeString()}
