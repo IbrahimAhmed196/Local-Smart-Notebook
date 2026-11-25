@@ -1440,6 +1440,6 @@ def process_document(pdf_path):
 if __name__ == "__main__":
 
     # Select the PDF to process
-    pdf_path = DATA_DIR / "sample4.pdf"
+    pdf_path = DATA_DIR / "Local Smart Notebook project proposal (1).pdf"
 
     doc, markdown, chunks = process_document(pdf_path)
