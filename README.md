@@ -64,3 +64,21 @@ See [Presentation generation](docs/presentations.md) for a request example, edit
 See [Backend structure](docs/backend-structure.md).
 
 Working on the presentation feature? See [Presentation architecture and developer guide](docs/presentation-architecture.md) (module map, how to add a layout, theme or chart type, how the tests are organised).
+
+## Spreadsheet analysis in Docker
+
+From the repository root, start Docker with Linux containers and build the worker image once (repeat after changing the worker or its dependencies).
+
+```sh
+docker build -t lsn-analysis:1 backend/app/analysis
+```
+
+Send a multipart request to the running backend. Prepend the configured API prefix if applicable.
+
+```sh
+curl -F "file=@tests/analysis/sales_test.csv" -F "question=What is the total per region?" http://localhost:8000/analysis/analyze
+```
+
+Analysis uses `qwen2.5-coder:7b`. Optional fields are `sheet` (Excel worksheet) and `show_prompt`. The response includes the generated code, model, input dimensions, `result_type`, and `result`. Tables use `columns`, `index`, and `data`; series use `name`, `index`, and `data`. A scalar is returned directly. Charts saved as `plot.png` are included as `plot_png_base64`.
+
+The API host needs access to its local Docker engine. Each run gets a read-only input directory, a temporary writable filesystem, one CPU, 512 MiB of memory and a 30-second execution deadline. The container runs as an unprivileged user with networking disabled. Up to two sandboxes can run per API process. Invalid generated code or oversized output returns HTTP 422, sandbox unavailability returns 503, and a timeout returns 504.

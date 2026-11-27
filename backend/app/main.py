@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.infographic.router import router as infographic_router
-from app.api import artifacts, auth, chat, documents, projects, presentations
+from app.api import analysis, artifacts, auth, chat, documents, projects, presentations
 from app.core.config import settings
 from app.core.exceptions import AppError
 from app.core.logging import setup_logging
@@ -50,6 +50,7 @@ async def app_error_handler(_: Request, exc: AppError):
 
 # One prefix for everything: change API_PREFIX in .env (for example /api/v1).
 app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(analysis.router, prefix=settings.api_prefix)
 app.include_router(projects.router, prefix=settings.api_prefix)
 app.include_router(documents.router, prefix=settings.api_prefix)
 app.include_router(chat.router, prefix=settings.api_prefix)

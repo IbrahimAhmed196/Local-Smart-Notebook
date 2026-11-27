@@ -55,8 +55,7 @@ class OllamaJSONClient:
             read_timeout or settings.ollama_read_timeout_seconds,
         )
 
-    def check_ready(self) -> None:
-        """Fail before generation if Ollama or the requested model is missing."""
+    def list_models(self) -> list[str]:
         try:
             reply = requests.get(f"{self.base_url}/api/tags", timeout=3)
             reply.raise_for_status()
@@ -76,6 +75,11 @@ class OllamaJSONClient:
             raise LlmUnavailableError(
                 "Ollama returned an unreadable model list. Check the Ollama server."
             ) from exc
+        return names
+
+    def check_ready(self) -> None:
+        """Fail before generation if Ollama or the requested model is missing."""
+        names = self.list_models()
         wanted = self.model_name
         if wanted not in names and f"{wanted}:latest" not in names:
             raise LlmUnavailableError(
