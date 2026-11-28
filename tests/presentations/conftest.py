@@ -19,6 +19,7 @@ def sample_deck():
 @pytest.fixture()
 def fake_generator(monkeypatch, sample_deck):
     """Replace generation stages while keeping the real runner and renderer."""
+    from app.presentations.context.schemas import PresentationContext
     from app.presentations.interfaces import GenerationSources
     from app.presentations.schemas.outline import PresentationOutlineResponse, SlideOutlineItem
 
@@ -44,9 +45,12 @@ def fake_generator(monkeypatch, sample_deck):
             )
             self._enter("prepare")
 
-        def read_context(self, documents, *, cancel_event=None):
+        def read_context(
+            self, documents, *, options=None, progress=None, cancel_event=None, previous=None, on_document=None
+        ):
             self._enter("read_context")
-            return GenerationSources(chunks=[], data_files=[])
+            return GenerationSources(context=PresentationContext(), data_files=[])
+
 
         def outline(self, options, sources, *, cancel_event=None):
             self._enter("outline")
@@ -93,3 +97,13 @@ def fake_generator(monkeypatch, sample_deck):
     generator = FakeDeckGenerator()
     monkeypatch.setattr(deck_generation, "get_generator", lambda: generator)
     return generator
+
+@pytest.fixture
+def use_files(monkeypatch):
+    """Let the context readers open the real path stored in a fake Document (no storage folder, no database)."""
+    from pathlib import Path
+ 
+    from app.presentations.context import readers
+ 
+    monkeypatch.setattr(readers.document_service, "get_file_path", lambda doc: Path(doc.file_path))
+

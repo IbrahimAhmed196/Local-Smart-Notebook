@@ -45,7 +45,6 @@ TEMPERATURE = settings.slide_temperature
 NUM_CTX = settings.presentation_num_ctx
 MAX_ATTEMPTS = settings.slide_max_attempts
 MAX_SOURCES_PER_SLIDE = 6
-MAX_SOURCE_CHARS = 900
 ChunksForSlide = Callable[[SlideOutlineItem], Sequence[SourceChunk]]
 
 
@@ -319,7 +318,7 @@ def _normalise_layout(raw: str) -> Tuple[str, List[str]]:
 def _prepare_sources(chunks: Sequence[SourceChunk]) -> Dict[str, SourceChunk]:
     shown: Dict[str, SourceChunk] = {}
     for number, chunk in enumerate(list(chunks)[:MAX_SOURCES_PER_SLIDE], start=1):
-        shown[f"S{number}"] = chunk.model_copy(update={"text": chunk.text[:MAX_SOURCE_CHARS]})
+        shown[f"S{number}"] = chunk
     return shown
 
 

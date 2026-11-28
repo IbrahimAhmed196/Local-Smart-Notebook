@@ -261,7 +261,6 @@ def test_the_deck_generator_describes_the_spreadsheets_and_gives_them_to_the_out
 
     monkeypatch.setattr(deck_generator, "generate_outline", spy)
     monkeypatch.setattr(deck_generator, "sources_from_documents", lambda documents: [sales_source()])
-    monkeypatch.setattr(deck_generator.chunks, "build_chunks", lambda documents: [])
     generator = deck_generator.LocalLlmDeckGenerator(client=FakeClient.sequence(), check_ready=False)
 
     with pytest.raises(Stop):

@@ -30,7 +30,7 @@ The current model is Qwen2.5-7B-Instruct through Ollama. Generation time depends
 
 ## Documents and spreadsheet data
 
-The presentation context adapter currently reads text from TXT, text-based PDF, and DOCX files. It selects relevant passages using word overlap with each slide's title and purpose. This is a temporary approach, not the planned full RAG integration. Scanned PDFs need text extraction through OCR before this adapter can use their contents.
+The context step reads TXT, text-based PDF and DOCX files (DOCX headings and tables included). For each document the model returns a short summary and cited facts; every fact must come with a quote that really occurs in the document, otherwise it is dropped. Each slide then receives only the facts that share meaningful words with it (or that the outline names). This is a temporary approach, not the planned full RAG integration: a document over the size limit (it depends on the model and the language: for example about 11,000 characters of Arabic or 19,500 of English with qwen2.5 7B at 8192 tokens; PRESENTATION_CONTEXT_MAX_CHARS_PER_DOCUMENT overrides it with one number) or more than PRESENTATION_CONTEXT_MAX_DOCUMENTS (default 5) text documents stops the job with a message, and nothing is cut silently. Scanned PDFs are reported in the presentation warnings; they need OCR, which is not available yet. To raise the size limit, raise PRESENTATION_NUM_CTX and measure with scripts/measure_context_tokens.py; the numbers live in context/budget.py.
 
 CSV and XLSX files supply chart and table data. XLSX reading requires `openpyxl` in the backend environment. Files should have clear column headers and consistent data types.
 

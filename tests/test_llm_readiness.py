@@ -62,10 +62,10 @@ def test_readiness_failure_stops_before_document_processing(scripted_llm, monkey
     client = scripted_llm()
     check = Mock(side_effect=LlmUnavailableError("Model unavailable"))
     monkeypatch.setattr(client, "check_ready", check)
-    build_chunks = Mock()
-    monkeypatch.setattr(deck_generation.chunks, "build_chunks", build_chunks)
+    provider = Mock()  
     progress = Mock()
-    generator = deck_generation.LocalLlmDeckGenerator(client=client)
+    generator = deck_generation.LocalLlmDeckGenerator(client=client, context_provider=provider)
+
 
     with pytest.raises(LlmUnavailableError, match="Model unavailable"):
         generator.generate(
@@ -73,6 +73,6 @@ def test_readiness_failure_stops_before_document_processing(scripted_llm, monkey
         )
 
     check.assert_called_once_with()
-    build_chunks.assert_not_called()
+    provider.build.assert_not_called()
     progress.assert_not_called()
     assert client.calls == []
