@@ -42,6 +42,8 @@ class PresentationOut(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
     deck: dict | None = Field(default=None, exclude=True)  # read only to build `warnings`
+    context: dict | None = Field(default=None, exclude=True)  # read only to build `warnings`; never returned
+
 
     @computed_field
     @property
@@ -53,9 +55,9 @@ class PresentationOut(BaseModel):
     @computed_field
     @property
     def warnings(self) -> list[str]:
-        """What the slide writer had to repair or drop (a chart that could not be built, ...)."""
+        """What the context step skipped or dropped, then what the slide writer had to repair or drop."""
         slides = (self.deck or {}).get("slides", [])
-        return [w for slide in slides for w in slide.get("warnings", [])]
+        return list((self.context or {}).get("warnings", [])) + [w for slide in slides for w in slide.get("warnings", [])]
 
 
 class PresentationOptionsOut(BaseModel):

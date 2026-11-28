@@ -12,13 +12,12 @@ from tests.presentations.test_presentation_outline import outline_response
 
 def test_pre_cancel_stops_before_readiness_or_documents(scripted_llm, monkeypatch):
     client = scripted_llm()
-    read = Mock()
-    monkeypatch.setattr(generator.chunks, "build_chunks", read)
+    provider = Mock()  # CTX-08: the context provider is injected instead of patching the old chunk reader
     cancel = Event()
     cancel.set()
 
     with pytest.raises(GenerationCancelled):
-        generator.LocalLlmDeckGenerator(client=client).generate(
+        generator.LocalLlmDeckGenerator(client=client, context_provider=provider).generate(
             notebook=SimpleNamespace(id=1),
             options={},
             documents=(),
@@ -27,7 +26,7 @@ def test_pre_cancel_stops_before_readiness_or_documents(scripted_llm, monkeypatc
         )
 
     assert client.ready_checks == 0
-    read.assert_not_called()
+    provider.build.assert_not_called()
 
 
 def test_same_cancel_event_reaches_outline_and_slides(scripted_llm):

@@ -96,11 +96,10 @@ class SlideWriter(Protocol):
 
 @dataclass(frozen=True)
 class GenerationSources:
-    """Existing text chunks and spreadsheet inputs; no new extraction policy."""
-
-    chunks: Sequence[SourceChunk]
+    """What the context step produced: extracted facts (CTX-04) and the spreadsheets."""
+ 
+    context: PresentationContext
     data_files: Sequence[DataSource]
-
 
 class DeckGenerator(Protocol):
     """Generation stages used by the runner, plus a whole-deck convenience API."""
@@ -118,8 +117,14 @@ class DeckGenerator(Protocol):
         self,
         documents: Sequence[Document],
         *,
+        options: dict | None = None,
+        progress: ProgressCallback | None = None,
         cancel_event: Event | None = None,
+        # CTX-07: previous=... and on_document=... (do not pass before then)
+        previous: PresentationContext | None = None,
+        on_document: Callable[[PresentationContext], None] | None = None,
     ) -> GenerationSources: ...
+
 
     def outline(
         self,

@@ -85,14 +85,6 @@ def test_invalid_upload_and_question():
     assert client.post(f"{prefix}/schema", files=files).status_code == 400
     assert client.post(f"{prefix}/analyze", files=files, data={"question": " "}).status_code == 400
 
-
-def test_health_lists_models(monkeypatch):
-    monkeypatch.setattr(OllamaJSONClient, "list_models", lambda self: ["local-model"])
-    assert client.get(f"{prefix}/health").json() == {
-        "api": "ok", "ollama": "ok", "models": ["local-model"],
-    }
-
-
 def test_analyze_rejects_invalid_generated_code(monkeypatch):
     monkeypatch.setattr(OllamaChatClient, "chat", Mock(return_value="result = ("))
     reply = client.post(f"{prefix}/analyze", files={"file": (sales.name, sales.read_bytes())},

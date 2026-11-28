@@ -3,11 +3,13 @@
 import logging
 from datetime import datetime
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.database import database
 from app.database.models import Presentation, PresentationStatus
 from app.presentations import generator as deck_generation
+from app.presentations.context.schemas import PresentationContext
 from app.presentations.rendering import render_deck
 from app.presentations.repository import selected_documents
 
@@ -33,9 +35,29 @@ def _prepare(db, presentation_id):
     return p, documents, generator
 
 
+def _saved_context(p) -> PresentationContext | None:
+    """The documents already extracted by an earlier run of this same row (resume, JOB-05)."""
+    if not p.context:
+        return None
+    try:
+        return PresentationContext.model_validate(p.context)
+    except ValidationError:
+        log.warning("Presentation %s: the stored context is unreadable, so it is extracted again", p.id)
+        return None
+ 
+ 
 def _read_context(db, p, generator, documents):
     _touch(db, p, stage="reading documents")
-    return generator.read_context(documents)
+    return generator.read_context(
+        documents,
+        options=p.options,
+        progress=lambda stage: _touch(db, p, stage=stage),  # "extracting 2/5"
+        previous=_saved_context(p),
+        # every finished document is saved at once, so a failure at document 3 keeps documents 1 and 2.
+        on_document=lambda context: _touch(db, p, context=context.model_dump(mode="json")),
+    )
+
+
 
 
 def _outline(db, p, generator, sources):

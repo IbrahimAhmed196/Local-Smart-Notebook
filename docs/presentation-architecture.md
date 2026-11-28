@@ -31,7 +31,7 @@ backend/app/
     citation_validator.py         every cited id must be a source given to that slide
     rendering.py                  render_deck(): saved options -> build_pptx -> artifact path
     repository.py                 selected_documents(): the DB helper shared by service and runner
-    context/                      documents -> source chunks (chunks.py); context schemas (schemas.py)
+    context/                      LlmContextProvider (CTX-04) builds document context; temporary stand-in for RagContextProvider (RAG-01)
     prompts/                      outline.py and slide_content.py (the prompt texts; LAYOUT_RULES lives here)
     schemas/                      layouts.py (the layout registry), slides.py (outline), slide_content.py (slide content)
     data/                         spreadsheet data: limits, models, reader, cleaning, catalog, chart_builder, table_builder, facts
@@ -54,7 +54,7 @@ POST /notebooks/{id}/presentations
          └ runner.run_generation(id)                 owns the DB session; every step below updates status and stage
             ├ generator.get_generator()              <- the single override point for tests
             ├ generator.prepare(...)                 readiness check of Ollama and the model
-            ├ generator.read_context(documents)      chunks of the documents + the CSV/XLSX sources
+            ├ generator.read_context(documents)      LlmContextProvider (CTX-04) builds document context + CSV/XLSX sources
             ├ generator.outline(options, sources)    outline.generate_outline(...)  -> PresentationOutlineResponse
             ├ generator.write_slides(...)            slide_content_agent.generate_presentation_content(...)
             │    └ per slide: LLM draft -> checks (data, citations, limits) -> SlideContent
@@ -86,7 +86,7 @@ On any exception the runner sets `FAILED` and stores the message (`generation_er
 | Protocol | Boundary | Implemented by | Called by |
 |---|---|---|---|
 | `LlmClient` | steps <-> model | `OllamaJSONClient`; `ScriptedLLMClient` (test fake) | outline, slide writer |
-| `ContextProvider` | generator <-> context | planned (CTX-*, RAG-*); `context/chunks.py` does the job today | generator |
+| `ContextProvider` | generator <-> context | `LlmContextProvider` (CTX-04), a temporary stand-in for planned `RagContextProvider` (RAG-01) | generator |
 | `OutlineGenerator` | generator <-> outline | `outline.generate_outline` | generator |
 | `SlideWriter` | generator <-> slide agent | `generate_presentation_content` | generator |
 | `DeckGenerator` | runner <-> generator | `LocalLlmDeckGenerator`; the fake in `tests/presentations/conftest.py` | runner |
@@ -221,8 +221,8 @@ client is shared with chat; `tests/fake_llm.py` (the scripted fake) is shared to
 | `slide_samples.py`, `conftest.py` | shared samples and the fixtures `sample_deck` and `fake_generator` |
 
 Run them from the repository root: `python -m pytest -q` (all) or `python -m pytest tests/presentations -q` (this feature only).
-Useful patch points: `generator.get_generator` (the fake generator), `limits.NAME` (limits), `catalog._profile`,
-`reader._SHEET_CACHE` and `reader.pd` (spreadsheet reading), `registry._RENDERERS`, `planning._layout_of`, `generator.chunks`.
+Useful patch points: `generator.get_generator` (the fake generator), `LocalLlmDeckGenerator(context_provider=...)` (the context-provider override),
+`limits.NAME` (limits), `catalog._profile`, `reader._SHEET_CACHE` and `reader.pd` (spreadsheet reading), `registry._RENDERERS`, `planning._layout_of`.
 
 Two things to know when you add a test: use `Path(__file__).resolve().parents[2]` to reach the repository root from this folder, and
 a test that runs Alembic must restore the logging configuration afterwards (see `_restore_logging` in
@@ -237,7 +237,7 @@ its paths to `include` in `pyproject.toml`. Line endings are kept as each file h
 ## 11. Known gaps (planned, not done)
 
 - Progress is still a free-text stage string and a restart marks a job `FAILED`; `docs/presentation-jobs.md` describes the target.
-- `ContextProvider` is declared but the pipeline still uses `context/chunks.py` directly (CTX-*, RAG-*).
+- `LlmContextProvider` (CTX-04) currently provides document context and is a temporary stand-in for the planned `RagContextProvider` (RAG-01). Tests can override it with `LocalLlmDeckGenerator(context_provider=...)`.
 - Chart types are not a registry (section 8.3).
 - `slide_content_agent.py` is long and could be split by responsibility.
 

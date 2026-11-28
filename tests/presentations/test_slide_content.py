@@ -136,13 +136,14 @@ def test_with_no_sources_nothing_can_be_cited_and_the_model_is_told_so():
     assert slide.bullets[0].source_ids == [] and slide.citations == []
 
 
-def test_only_the_first_chunks_are_shown_and_long_text_is_cut():
-    many = [SourceChunk(chunk_id=f"c{i}", document_id=1, filename="f.txt", text="x" * 5000) for i in range(20)]
+def test_only_the_first_chunks_are_shown_and_source_text_is_not_cut():
+    many = [SourceChunk(chunk_id=f"c{i}", document_id=1, filename="f.txt", text="x" * 1500) for i in range(20)]
+
     client = FakeClient.sequence(draft(("ok", ["S1"])))
     write(item(), client, chunks=many)
     prompt = client.calls[0]["prompt"]
     assert "[S6]" in prompt and "[S7]" not in prompt
-    assert "x" * 900 in prompt and "x" * 901 not in prompt  # each chunk is cut to 900 characters
+    assert "x" * 1500 in prompt  # nothing is cut mid-sentence
 
 
 # ---------------------------------------------------------------- layouts
